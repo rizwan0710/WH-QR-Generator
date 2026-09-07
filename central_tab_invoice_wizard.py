@@ -1,130 +1,170 @@
-import os, tkinter as tk, sqlite3, qrcode, re
-from tkinter import messagebox, filedialog, ttk
-from PIL import Image, ImageTk
-import label_invoice_designer as design_logic  
-import invoice_packing_logic as ipl  
+import tkinter as tk
+from tkinter import messagebox, filedialog
+from PIL import ImageTk, Image
+import form_invoice_packing_logic as ipl  # Menggunakan rujukan fail logik invois utama abang
+import invoice_print_manager  # Menyambungkan enjin cantuman 1 tetingkap cetak berkelompok
+import os
 
-def buka_popup_pukal_invoice_1by1(jadual, root):
-    """🌟 SMART AUTO-FOCUS ENGINE: Automatically slides to the highlighted box page status on load 🌟"""
-    item_terpilih = jadual.selection()
-    if not item_terpilih:
-        for item_id in jadual.get_children():
-            if "☑" in str(jadual.set(item_id, "Select")):
-                item_terpilih = (item_id,)
-                break
-
-    if not item_terpilih:
-        messagebox.showwarning("Peringatan", "Sila pilih atau tanda ☑ rekod Invoice!", parent=root)
+def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
+    """
+    🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD & STANDARDIZED UI) 🌟
+    Jika 1 data: Keluar 3 butang bersih (PRINT, SAVE, CLOSE) tanpa navigasi.
+    Jika >1 data: Keluar 5 butang batch beserta butang selak PREVIOUS/NEXT.
+    """
+    if not senarai_kad_tunggal:
         return
 
-    target_id = item_terpilih
-
-    # Ambil nilai kuantiti, status halaman murni, dan nombor siri unik baris yang sedang diklik oleh operator
-    live_treeview_qty = str(jadual.set(target_id, "Quantity")).upper().replace("PCS", "").strip()
-    live_page_status  = str(jadual.set(target_id, "Page Status")).upper().strip() # Cth: "BOX 4/4"
-    live_sequence_no  = str(jadual.set(target_id, "Invoice Sequence No")).strip() # Cth: "INV2609040004"
-
-    inv_no_rujukan = str(jadual.set(target_id, "Invoice No")).strip().replace("INV:", "").strip()
-    so_no_rujukan  = str(jadual.set(target_id, "SO No")).strip().replace("SO:", "").strip()
-    cust_val       = str(jadual.set(target_id, "Customer")).strip()
-    
-    semua_batch = []
-    try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
-            cursor = conn.cursor()
-            # Tarik kesemua 4 baris rekod kumpulan invois ini dari SQLite
-            query = """
-                SELECT machine, sequence_no, lotcard_no 
-                FROM rekod_qr 
-                WHERE drawing_no LIKE ? AND part_no LIKE ? AND sequence_no LIKE 'INV%'
-                ORDER BY sequence_no ASC
-            """
-            cursor.execute(query, (f"%{inv_no_rujukan}%", f"%{so_no_rujukan}%"))
-            semua_batch = cursor.fetchall()
-    except Exception as e:
-        messagebox.showerror("DATABASE ERROR", str(e), parent=root)
-        return
-
-    if not semua_batch:
-        messagebox.showwarning("REMINDER", f"Tiada data ditemui untuk Invoice: {inv_no_rujukan}", parent=root)
-        return
-
-    senarai_kad_pembungkus = []
-    total_kotak = len(semua_batch)
-    
-    # 🌟 ENJIN DETEKSI INDEKS HALAMAN: Sediakan pemutus litar fokus halaman permulaan dinamik
-    target_start_index = 0
-
-    for idx, (mac_val, seq_val, lot_val) in enumerate(semua_batch):
-        # Gunakan format teks paging seragam gred premium
-        teks_paging_betul = f"BOX {idx + 1}/{total_kotak}"
-        
-        # SINKRONISASI COUPLING: Jika nombor siri atau teks status sepadan dengan baris jadual, kunci indeksnya!
-        if str(seq_val).strip() == live_sequence_no or teks_paging_betul == live_page_status:
-            target_start_index = idx
-        
-        qr = qrcode.QRCode(version=1, box_size=10, border=1)
-        qr.add_data(seq_val)
-        qr.make(fit=True)
-        img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-        
-        img_kad = design_logic.bina_imej_invoice(img_qr_mentah, inv_no_rujukan, so_no_rujukan, mac_val, f"{live_treeview_qty} PCS", seq_val, teks_paging_betul, cust_val)
-        senarai_kad_pembungkus.append((img_kad, teks_paging_betul, inv_no_rujukan))
-
-    tingkap_popup = tk.Toplevel(root)
-    tingkap_popup.title(f"INVOICE BATCH PANEL - {inv_no_rujukan}")
-    tingkap_popup.geometry("560x540+420+120") 
+    tingkap_popup = tk.Toplevel(parent)
+    tingkap_popup.title(f"INVOICE BATCH PANEL - {inv_no}")
+    tingkap_popup.geometry("540x510+420+120")
     tingkap_popup.configure(bg="#F8F9FA")
     tingkap_popup.grab_set()
 
-    # 🌟 SUNTIKAN FOCUS: Tetapkan halaman permulaan mengikut indeks baris yang dipilih oleh operator (cth: indeks ke-3 untuk halaman 4/4)
-    indeks_halaman = target_start_index
-    total_label = len(senarai_kad_pembungkus)
+    indeks_halaman = 0
+    senarai_kad_pembungkus_lokal = senarai_kad_tunggal
+    total_label = len(senarai_kad_pembungkus_lokal)
 
     lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#EA580C", bg="#F8F9FA")
     lbl_header.pack(pady=12)
 
     frame_canvas_bg = tk.Frame(tingkap_popup, bg="white", bd=1, relief="groove")
     frame_canvas_bg.pack(fill=tk.BOTH, expand=True, padx=30, pady=5)
+    
     label_gambar = tk.Label(frame_canvas_bg, bg="white")
     label_gambar.pack(padx=15, pady=15, expand=True, fill=tk.BOTH)
 
     def kemaskini_paparan_selak():
-        if total_label == 0: return
-        img_kad, teks_paging_betul, inv_no = senarai_kad_pembungkus[indeks_halaman]
-        lbl_header.config(text=f"INVOICE PREVIEW ({inv_no} - {teks_paging_betul})  |  BATCH COUNTER: {indeks_halaman + 1}/{total_label}")
+        idx = indeks_halaman
+        img_kad, box_paging = senarai_kad_pembungkus_lokal[idx]
         
-        img_visual = img_kad.resize((420, 230), Image.Resampling.LANCZOS)
+        lbl_header.config(text=f"LABEL PREVIEW ({box_paging})  |  BATCH COUNTER: {idx + 1}/{total_label}")
+        
+        img_visual = img_kad.resize((420, 200), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(img_visual)
         label_gambar.config(image=img_tk)
         label_gambar.image = img_tk 
         
         if total_label > 1:
-            btn_prev.config(state="normal" if indeks_halaman > 0 else "disabled")
-            btn_next.config(state="normal" if indeks_halaman < total_label - 1 else "disabled")
+            btn_prev.config(state="normal" if idx > 0 else "disabled")
+            btn_next.config(state="normal" if idx < total_label - 1 else "disabled")
 
     def halaman_ke_kiri():
         nonlocal indeks_halaman
-        if indeks_halaman > 0: indeks_halaman -= 1; kemaskini_paparan_selak()
-        
+        if indeks_halaman > 0:
+            indeks_halaman -= 1
+            kemaskini_paparan_selak()
+
     def halaman_ke_kanan():
         nonlocal indeks_halaman
-        if indeks_halaman < total_label - 1: indeks_halaman += 1; kemaskini_paparan_selak()
+        if indeks_halaman < total_label - 1:
+            indeks_halaman += 1
+            kemaskini_paparan_selak()
 
+    def cetak_semua_pukal():
+        """🔥 ENJIN BATCH PRINT INVOICE: Menggabungkan semua stiker ke dalam 1 pop-up tingkap printer Windows 🔥"""
+        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} THIS LABEL IN ONE WINDOW?", parent=tingkap_popup):
+            # Ekstrak senarai imej bersih (PIL Image) sahaja daripada gandingan tuple
+            imej_bersih_list = [img for img, _ in senarai_kad_pembungkus_lokal]
+            
+            # Panggil enjin cantuman menegak bersatu dari print manager
+            berjaya = invoice_print_manager.cetak_a4_batch(imej_bersih_list)
+            if berjaya:
+                messagebox.showinfo("SUCCESS", f"ALL {total_label} LABEL MANAGE TO SEND TO ONE PRINT WINDOW!", parent=tingkap_popup)
+
+    def simpan_semua_pukal():
+        folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL", parent=tingkap_popup)
+        if folder_tujuan:
+            for img_kad, box_paging in senarai_kad_pembungkus_lokal:
+                paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
+                img_kad.save(os.path.join(folder_tujuan, f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png"), "PNG")
+            messagebox.showinfo("COMPLETE", f"ALL {total_label} LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
+
+    def simpan_tunggal_sahaja():
+        img_kad, box_paging = senarai_kad_pembungkus_lokal[indeks_halaman]
+        paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
+        path_fail = filedialog.asksaveasfilename(
+            initialfile=f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png", 
+            defaultextension=".png", 
+            filetypes=[("PNG Image", "*.png")],
+            title="SIMPAN GRAFIK LABEL"
+        )
+        if path_fail:
+            img_kad.save(path_fail, "PNG")
+            messagebox.showinfo("COMPLETE", "LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
+
+    # ─── 1. BAR NAVIGASI SELAK HALAMAN STANDARDIZED (Hanya pack jika data > 1) ───
     frame_nav = tk.Frame(tingkap_popup, bg="#F8F9FA")
     btn_prev = tk.Button(frame_nav, text="◀ PREVIOUS", command=halaman_ke_kiri, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev.pack(side=tk.LEFT, padx=8)
     btn_next = tk.Button(frame_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
-    if total_label > 1: frame_nav.pack(pady=5); btn_prev.pack(side=tk.LEFT, padx=8); btn_next.pack(side=tk.LEFT, padx=8)
+    btn_next.pack(side=tk.LEFT, padx=8)
 
-    def_simpan_tunggal_wizard = lambda: ipl.simpan_qr_manual(senarai_kad_pembungkus[indeks_halaman], senarai_kad_pembungkus[indeks_halaman])
+    if total_label > 1:
+        frame_nav.pack(pady=5)
 
+    # ─── 2. BARIS BUTANG KAWALAN FLAT STYLE SERAGAM (DINAMIK & KALIS TUPLE ERROR) ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
-    btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
     
-    tk.Button(frame_btn, text="🖨️ PRINT", command=lambda: ipl.cetak_kad_tunggal(senarai_kad_pembungkus[indeks_halaman]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-    tk.Button(frame_btn, text="💾 SAVE", command=def_simpan_tunggal_wizard, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-    tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+    btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
-    # Memuatkan paparan mengikut indeks fokus dinamik sejurus tetingkap dibuka
+    if total_label == 1:
+        # 🌟 FIXED INDEX TUNGGAL: Mengambil elemen imej bersih daripada tuple untuk kes 1 stiker tunggal
+        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus_lokal), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+    else:
+        # 🌟 FIXED INDEX CURRENT: Mengambil elemen imej bersih pada indeks halaman yang aktif untuk cetakan batch
+        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus_lokal[indeks_halaman]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Button(frame_btn, text="🔥 PRINT ALL (1 WINDOW)", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Button(frame_btn, text="💾 SAVE CURRENT", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Button(frame_btn, text="📦 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
+
     kemaskini_paparan_selak()
+
+# ─── SECTION ALIAS PROJEK (SINKRONISASI CENTRAL DATABASE PANEL) ───
+def buka_popup_pukal_invoice_1by1(jadual, parent_window=None):
+    """
+    🌟 ALIAS LINKING ENGINE: Menyambungkan panggilan database_manager.py baris 64 🌟
+    Membaca baris terpilih dari Treeview Central Database, membina tuple data imej PIL murni, 
+    dan melancarkan jendela pratinjau utama secara selamat tanpa ralat AttributeError.
+    """
+    item_terpilih = jadual.selection()
+    if not item_terpilih:
+        return
+        
+    nilai_baris = jadual.item(item_terpilih, "values")
+    if not nilai_baris:
+        return
+        
+    # Ekstrak parameter mengikut struktur rekod_qr database abang
+    # cols = (id, tarikh, customer, drawing_no, part_no, quantity, machine, lotcard_no, sequence_no)
+    try:
+        id_db, tarikh, cust, dwg, part, qty, machine, lot, seq = nilai_baris
+    except ValueError:
+        # Jika kolum berbeza, gunakan perlindungan fallback data
+        return
+        
+    import qrcode
+    qr = qrcode.QRCode(version=1, border=1)
+    qr.add_data(str(seq).strip())
+    qr.make(fit=True)
+    im_qr = qr.make_image()
+    
+    import label_invoice_designer as lid
+    img_stiker = lid.bina_imej_invoice(
+        img_qr=im_qr,
+        invoice_no=str(dwg).replace("INV:", "").strip(),
+        so_no=str(part).replace("SO:", "").strip(),
+        outer_seq=str(machine).strip(),
+        outer_qty=str(qty).strip(),
+        seq_inv_spesifik=str(seq).strip(),
+        text_paging=str(lot).strip(),
+        customer=str(cust).strip()
+    )
+    
+    if img_stiker:
+        # Formatkan semula data ke dalam rantaian list tuple [(Image, Text)] sepadan enjin preview
+        gandingan_kad = [(img_stiker, str(lot).strip())]
+        buka_popup_individual_1by1(parent_window if parent_window else jadual.winfo_toplevel(), gandingan_kad, str(dwg).replace("INV:", "").strip())

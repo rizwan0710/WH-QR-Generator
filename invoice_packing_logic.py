@@ -1,106 +1,159 @@
+import sqlite3
+import datetime
+import qrcode
 import os
 import sys
 import tkinter as tk
 from tkinter import messagebox, filedialog
-import invoice_print_manager  # Membawa masuk fungsi penggabung cetakan kelompok
+from PIL import Image, ImageTk
+import label_invoice_designer as lid
+import invoice_print_manager
+import invoice_preview_window
 
-def cetak_kad_tunggal(img_label):
-    """
-    Menghantar imej stiker label Invoice terus ke gilir pencetak Windows (Thermal Printer).
-    Membaca fail imej dari RAM secara langsung tanpa sangkutan cache.
-    """
-    if img_label is None:
-        return False
+btn_submit_ref = None
+
+def bersihkan_nama_folder(n): 
+    return "".join([c for c in n if c not in ['\\','/',':','*','?','"','<','>','|']]).strip()
+
+def dapatkan_maklumat_outer(s):
     try:
-        temp_file = "temp_print_invoice_wizard.png"
-        img_label.save(temp_file)
-        
-        # Logik hantaran arahan cetakan mengikut platform sistem operasi komputer
-        if sys.platform == "win32":
-            os.startfile(temp_file, "print")
-            return True
+        with sqlite3.connect("warehouse_data.db", timeout=10) as c: 
+            return c.cursor().execute("SELECT customer, part_no, quantity FROM rekod_qr WHERE sequence_no = ?", (str(s).strip(),)).fetchone()
+    except: 
+        return None
+
+def cetak_qr(target):
+    """🖨️ ENJIN CETAK DIRECT MUTTAMAD (EXTRACTS INDEX [0] FROM TUPLE) 🖨️"""
+    try:
+        im = None
+        # 🌟 JALAN PENYELESAIAN UTAMA: Jika target ialah list, ambil elemen pertama dan semak jika ia tuple
+        if isinstance(target, list) and len(target) > 0:
+            item = target[0]
+            im = item[0] if isinstance(item, tuple) else item
+        # 🌟 JALAN PENYELESAIAN UTAMA: Jika target ialah tuple (Imej, Teks), paksa ambil objek imej di indeks [0]
+        elif isinstance(target, tuple) and len(target) > 0:
+            im = target[0]
         else:
-            # Pilihan sandaran untuk sistem operasi selain Windows (Linux/Mac)
-            os.system(f"lp {temp_file}")
-            return True
-    except Exception as e:
+            im = target
+        
+        if im is None or not hasattr(im, "save"):
+            print("Ralat: Gagal mengekstrak objek imej bersih.")
+            return
+
+        temp = "temp_print_invoice.png"
+        im.save(temp)
+        if sys.platform == "win32": 
+            os.startfile(temp, "print")
+    except Exception as e: 
         print(f"Invoice logic file printing error: {str(e)}")
-        return False
 
-def laksanakan_cetak_pukal_invoice(senarai_data_borang, enjin_penjana_grafik):
-    """
-    🔥 FUNGSI UTAMA BATCH PRINTING FORM INVOICE (1 WINDOW POP-UP) 🔥
-    Menerima himpunan data rekod invois, menjana grafik bagi setiap label ke RAM, 
-    dan menghantarnya sekaligus supaya keluar hanya 1 pop-up tetingkap cetakan.
-    
-    :param senarai_data_borang: List berisi dictionary data invois dari Form UI
-    :param enjin_penjana_grafik: Fungsi callback reka bentuk label (e.g. fungsi designer)
-    """
-    if not senarai_data_borang:
-        messagebox.showwarning("PERINGATAN BATCH", "Tiada data invois yang dipilih untuk dicetak.")
-        return False
-        
-    bakul_imej_label = []
-    
+def simpan_qr_manual(target, inv):
+    """💾 ENJIN SIMPAN DIRECT MUTTAMAD (EXTRACTS INDEX [0] FROM TUPLE) 💾"""
     try:
-        # 1. Kumpulkan semua imej label ke dalam satu bakul senarai di dalam memori
-        for data_rekod in senarai_data_borang:
-            # Jana objek PIL Image berdasarkan struktur data borang invois semasa
-            img_label = enjin_penjana_grafik(data_rekod)
-            if img_label:
-                bakul_imej_label.append(img_label)
-                
-        # 2. Hantar keseluruhan senarai imej ke Print Manager di LUAR gelung (loop)
-        if bakul_imej_label:
-            berjaya = invoice_print_manager.cetak_a4_batch(bakul_imej_label)
-            return berjaya
+        im = None
+        if isinstance(target, list) and len(target) > 0:
+            item = target[0]
+            im = item[0] if isinstance(item, tuple) else item
+        elif isinstance(target, tuple) and len(target) > 0:
+            im = target[0]
         else:
-            messagebox.showerror("RALAT GRAFIK", "Gagal menjana grafik imej stiker bagi rekod invois.")
-            return False
-            
-    except Exception as e:
-        messagebox.showerror("RALAT PROSES CETAK", f"Sistem gagal memproses cetakan pukal:\n{str(e)}")
-        return False
-
-def simpan_qr_manual(img_label, seq_val):
-    """
-    Menyimpan grafik imej stiker label Invoice ke dalam folder storan komputer lantai kilang.
-    """
-    if img_label is None: 
-        return False
-    try:
-        fail_clean = str(seq_val).replace("/", "-").replace(":", "-").strip()
-        path_simpan = filedialog.asksaveasfilename(
-            initialfile=f"REPRINT_INVOICE_{fail_clean}.png",
-            defaultextension=".png",
-            filetypes=[("PNG Files", "*.png")],
-            title="Simpan Grafik Label Invoice"
-        )
-        if path_simpan:
-            img_label.convert("RGB").save(path_simpan, "PNG", quality=100)
-            messagebox.showinfo("COMPLETE", f"Label Invoice Box [{fail_clean}] Successfully Saved!")
-            return True
-    except Exception as e:
-        messagebox.showerror("STORAGE ERROR", f"FAILED TO SAVE LABEL: {str(e)}")
-    return False
-
-# ─── SECTION: ENJIN PENGURUS LOGIK TRAFIK INVOIS OHTA PRECISION ───
-def laksanakan_semakan_integriti_data(data_peta):
-    """
-    Melakukan proses validasi silang (cross-validation) ke atas setiap parameter
-    borang logs invois bagi memastikan tiada lambakan data kosong dalam SQLite.
-    """
-    try:
-        if not data_peta.get("sequence_no") or not data_peta.get("customer"):
-            return False
-            
-        # Blok simulasi pemprosesan rantaian string keselamatan
-        seq = str(data_peta["sequence_no"]).strip()
-        if not seq.startswith("INV"):
-            return False
-            
-        return True
+            im = target
         
-    except Exception as e:
-        print(f"Integriti log ralat: {str(e)}")
-        return False
+        if im is None or not hasattr(im, "save"):
+            print("Ralat: Gagal mengekstrak imej untuk simpanan.")
+            return
+            
+        p = filedialog.asksaveasfilename(initialfile=f"INVOICE_{str(inv).replace('/','-')}.png", defaultextension=".png")
+        if p: 
+            im.convert("RGB").save(p, "PNG")
+            messagebox.showinfo("Success", "Saved!")
+    except Exception as e: 
+        print(str(e))
+
+def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
+    """⚡ ENJIN SUBMIT DATA INVOICE OHTA PRECISION ⚡"""
+    dt = e_dt.get_date().strftime("%d/%m/%Y") if hasattr(e_dt, 'get_date') else str(e_dt)
+    inv, so = e_inv.get().strip().upper(), e_so.get().strip().upper()
+    out = [e.get().strip().upper() for e in e_out if e.get().strip()]
+    if not inv or not so or not out: 
+        return messagebox.showwarning("INCOMPLETE", "FILL FORM!")
+    
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as cc:
+            for c in out:
+                if cc.cursor().execute("SELECT drawing_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' AND machine = ?", (c,)).fetchone(): 
+                    return messagebox.showerror("DUPLICATE", f"Box {c} Used!")
+    except Exception as e: 
+        return messagebox.showerror("ERROR", str(e))
+
+    d1 = dapatkan_maklumat_outer(out)
+    if not d1: 
+        return messagebox.showerror("ERROR", "Box 1 Not Found!")
+    customer_utama, part_utama, qty_pcs_str = d1
+    total_box, sk = len(out), []
+    pola = datetime.datetime.now().strftime("%y%m%d")
+    
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as cs:
+            cur = cs.cursor()
+            for i, c in enumerate(out, start=1):
+                res = dapatkan_maklumat_outer(c)
+                q_cl = str(res[2]).upper().replace("PCS","").strip() if res else "0"
+                qty = int(q_cl) if q_cl.isdigit() else 0
+                
+                cur.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (f"INV{pola}%",))
+                max_r = cur.fetchone()
+                bil = (int(str(max_r[0])[-4:]) + 1) if (max_r and max_r[0]) else 1
+                seq = f"INV{pola}{bil:04d}"
+                pg = f"BOX {i}/{total_box}"
+                
+                cur.execute("INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no) VALUES (?,?,?,?,?,?,?,?,?)",
+                            (dt, customer_utama, f"INV:{inv}", f"SO:{so}", f"{qty} PCS", datetime.datetime.now().strftime("%I:%M:%S %p"), c, pg, seq))
+                
+                qr = qrcode.QRCode(version=1, border=1)
+                qr.add_data(seq)
+                qr.make(fit=True)
+                im_qr = qr.make_image()
+                
+                try:
+                    stk = lid.bina_imej_invoice(img_qr=im_qr, invoice_no=inv, so_no=so, outer_seq=c, outer_qty=f"{qty} PCS", seq_inv_spesifik=seq, text_paging=pg, customer=customer_utama)
+                    if stk: 
+                        sk.append((stk, pg))
+                except Exception as e: 
+                    return messagebox.showerror("DESIGNER ERROR", str(e))
+            cs.commit()
+            
+        # Panggil jendela popup pengurus paparan pratinjau yang stabil
+        invoice_preview_window.buka_popup_individual_1by1(win, sk, inv)
+        
+    except Exception as e: 
+        messagebox.showerror("DB ERROR", str(e))
+
+def buka_window_preview_database_nas(win):
+    """⚡ LIVE PREVIEW JADUAL DATABASE NAS ⚡"""
+    tp = tk.Toplevel(win)
+    tp.title("NAS PREVIEW")
+    tp.geometry("820x450")
+    tp.grab_set()
+    
+    fr = tk.Frame(tp)
+    fr.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+    cols = ("ID", "Date", "Customer", "Drawing No", "Part No", "Quantity", "Sequence No")
+    
+    tree = ttk.Treeview(fr, columns=cols, show="headings")
+    tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+    for c in cols: 
+        tree.heading(c, text=c)
+        tree.column(c, width=100, anchor="center")
+        
+    sb = ttk.Scrollbar(fr, command=tree.yview)
+    tree.configure(yscrollcommand=sb.set)
+    sb.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            for r in conn.cursor().execute("SELECT id, tarikh, customer, drawing_no, part_no, quantity, sequence_no FROM rekod_qr ORDER BY id DESC LIMIT 100").fetchall(): 
+                tree.insert("", tk.END, values=r)
+    except Exception as e: 
+        messagebox.showerror("ERROR", str(e))

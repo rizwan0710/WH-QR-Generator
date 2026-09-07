@@ -23,7 +23,7 @@ dbm.siapkan_database()
 def laksanakan_shutdown_system_selamat():
     """🌟 SYSTEM SAFE SHUTDOWN: Memastikan penutupan perisian yang bersih gred industri 🌟"""
     if messagebox.askyesno("CONFIRM SHUTDOWN", "Are you sure you want to securely close and exit the OHTA Precision System?", parent=root):
-        try:
+        try: 
             root.grab_release()
         except:
             pass

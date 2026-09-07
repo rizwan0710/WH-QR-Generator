@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 from PIL import ImageTk, Image
 import invoice_packing_logic as ipl
+import invoice_print_manager  # Menyambungkan enjin cantuman 1 tetingkap cetak berkelompok
 import os
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
@@ -60,10 +61,15 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
             kemaskini_paparan_selak()
 
     def cetak_semua_pukal():
-        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} THIS LABEL?", parent=tingkap_popup):
-            for img_kad, _ in senarai_kad_pembungkus_lokal:
-                ipl.cetak_kad_tunggal(img_kad)
-            messagebox.showinfo("SUCCESS", f"ALL {total_label} LABEL MANAGE TO PRINT !", parent=tingkap_popup)
+        """🔥 ENJIN BATCH PRINT INVOICE: Menggabungkan semua stiker ke dalam 1 pop-up tingkap printer Windows 🔥"""
+        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} THIS LABEL IN ONE WINDOW?", parent=tingkap_popup):
+            # Ekstrak senarai imej bersih (PIL Image) sahaja daripada gandingan tuple
+            imej_bersih_list = [img for img, _ in senarai_kad_pembungkus_lokal]
+            
+            # Panggil enjin cantuman menegak bersatu dari print manager
+            berjaya = invoice_print_manager.cetak_a4_batch(imej_bersih_list)
+            if berjaya:
+                messagebox.showinfo("SUCCESS", f"ALL {total_label} LABEL MANAGE TO SEND TO ONE PRINT WINDOW!", parent=tingkap_popup)
 
     def simpan_semua_pukal():
         folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL", parent=tingkap_popup)
@@ -96,20 +102,21 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. BARIS BUTANG KAWALAN FLAT STYLE SERAGAM (DINAMIK) ───
+    # ─── 2. BARIS BUTANG KAWALAN FLAT STYLE SERAGAM (DINAMIK & KALIS TUPLE ERROR) ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
     if total_label == 1:
-        # 🌟 FIXED MEMORY COUPLING: Memanggil flat array indeks [0][0] dengan selamat ke objek imej murni
-        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: ipl.cetak_kad_tunggal(senarai_kad_pembungkus_lokal[0][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        # 🌟 FIXED INDEKS TUNGGAL: Paksa ambil indeks [0][0] untuk imej tulen sebelum dicetak
+        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: invoice_print_manager.cetak_a4_master(senarai_kad_pembungkus_lokal[0][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: ipl.cetak_kad_tunggal(senarai_kad_pembungkus_lokal[indeks_halaman][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="🔥 PRINT ALL", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        # 🌟 FIXED INDEKS CURRENT: Mengambil objek imej bersih di indeks [indeks_halaman][0] untuk cetakan tunggal aktif
+        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: invoice_print_manager.cetak_a4_master(senarai_kad_pembungkus_lokal[indeks_halaman][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        tk.Button(frame_btn, text="🔥 PRINT ALL (1 WINDOW)", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
         tk.Button(frame_btn, text="💾 SAVE CURRENT", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
         tk.Button(frame_btn, text="📦 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
