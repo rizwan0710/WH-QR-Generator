@@ -7,28 +7,36 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 import label_invoice_designer as lid
+import invoice_print_manager  # Membawa masuk pengurus gabungan 1 tetingkap cetak
 
 btn_submit_ref = None
 
 def bersihkan_nama_folder(nama):
-    for a in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']: nama = nama.replace(a, '_')
+    for a in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']: 
+        nama = nama.replace(a, '_')
     return nama.strip()
 
 def dapatkan_maklumat_outer(outer_seq):
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
-            return conn.cursor().execute("SELECT customer, part_no, quantity FROM rekod_qr WHERE sequence_no = ?", (outer_seq,)).fetchone()
-    except: return None
+            return conn.cursor().execute("SELECT customer, part_no, quantity FROM rekod_qr WHERE sequence_no = ?", (str(outer_seq).strip(),)).fetchone()
+    except: 
+        return None
 
 def cetak_qr(img_label):
     try:
-        temp = "temp_print_invoice.png"; img_label.save(temp)
-        if sys.platform == "win32": os.startfile(temp, "print")
-    except Exception as e: print(str(e))
+        temp = "temp_print_invoice.png"
+        img_label.save(temp)
+        if sys.platform == "win32": 
+            os.startfile(temp, "print")
+    except Exception as e: 
+        print(str(e))
 
 def simpan_qr_manual(img_label, inv_no):
     p = filedialog.asksaveasfilename(initialfile=f"INVOICE_STICKER_{str(inv_no).replace('/','-')}.png", defaultextension=".png")
-    if p: img_label.convert("RGB").save(p, "PNG"); messagebox.showinfo("Success", "Saved!")
+    if p: 
+        img_label.convert("RGB").save(p, "PNG")
+        messagebox.showinfo("Success", "Saved!")
 
 def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, senarai_kad, inv_no, customer=""):
     """🌟 PANEL PREVIEW INVOICE SETELAH SUBMIT FORM (FIXED NAVIGASI ENGINE) 🌟"""
@@ -63,7 +71,6 @@ def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, s
             btn_p.config(state="normal" if indeks_halaman > 0 else "disabled")
             btn_n.config(state="normal" if indeks_halaman < total_label - 1 else "disabled")
 
-    # 🌟 KOREKSI UTAMA: Menggunakan fungsi kawalan nonlocal untuk membolehkan butang berfungsi 🌟
     def halaman_ke_kiri():
         nonlocal indeks_halaman
         if indeks_halaman > 0:
@@ -82,7 +89,7 @@ def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, s
             e.config(state="normal")
             e.delete(0, tk.END)
         if btn_submit_ref and btn_submit_ref.winfo_exists(): 
-            btn_submit_ref.config(state="normal", text="SUBMIT & GENERATE INVOICE QR", bg="#0284C7")
+            btn_submit_ref.config(state="normal", text="SUBMIT & PRINT INVOICE QR", bg="#007ACC")
         entry_inv.focus_set()
         tp.destroy()
 
@@ -96,7 +103,6 @@ def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, s
         btn_p.pack(side=tk.LEFT, padx=8)
         btn_n.pack(side=tk.LEFT, padx=8)
 
-    # Barisan Butang Kawalan Output Bawah Flat Style Seragam
     fr_btn = tk.Frame(tp, bg="#F8F9FA")
     fr_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     b_st = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
@@ -106,7 +112,8 @@ def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, s
         tk.Button(fr_btn, text="💾 SAVE ", command=lambda: simpan_qr_manual(senarai_kad[0][0], inv_no), bg="#F59E0B", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
     else:
         tk.Button(fr_btn, text="🖨️ PRINT CURRENT", command=lambda: cetak_qr(senarai_kad[indeks_halaman][0]), bg="#22C55E", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(fr_btn, text="🔥 PRINT ALL", command=lambda: [cetak_qr(k) for k, _ in senarai_kad], bg="#10B981", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        # 🌟 PRINT ALL memanggil enjin gabungan kelompok 1 pop-up tingkap printer Windows
+        tk.Button(fr_btn, text="🔥 PRINT ALL (1 WINDOW)", command=lambda: invoice_print_manager.cetak_a4_batch([k for k, _ in senarai_kad]), bg="#10B981", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
         
     tk.Button(fr_btn, text="❌ CLOSE", command=reset_dan_tutup, bg="#374151", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     
@@ -114,58 +121,85 @@ def paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, s
 
 def proses_submit_invoice(win_inv, entry_date, entry_inv, entry_so, entries_outer, btn_submit_widget=None):
     global btn_submit_ref
-    if btn_submit_widget: btn_submit_ref = btn_submit_widget
+    if btn_submit_widget: 
+        btn_submit_ref = btn_submit_widget
     tarikh_str = entry_date.get_date().strftime("%d/%m/%Y") if hasattr(entry_date, 'get_date') else str(entry_date)
     inv_no, so_no = entry_inv.get().strip().upper(), entry_so.get().strip().upper()
     senarai_outer = [e.get().strip().upper() for e in entries_outer if e.get().strip()]
 
-    if not inv_no or not so_no or not senarai_outer: return messagebox.showwarning("INCOMPLETE", "PLEASE COMPLETE THE FORM!", parent=win_inv)
-    if len(senarai_outer) != len(set(senarai_outer)): return messagebox.showerror("FORM ERROR", "SAME OUTER BOX SN DETECTED!", parent=win_inv)
+    if not inv_no or not so_no or not senarai_outer: 
+        return messagebox.showwarning("INCOMPLETE", "PLEASE COMPLETE THE FORM!", parent=win_inv)
+    if len(senarai_outer) != len(set(senarai_outer)): 
+        return messagebox.showerror("FORM ERROR", "SAME OUTER BOX SN DETECTED!", parent=win_inv)
 
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn_check:
             for code in senarai_outer:
                 if conn_check.cursor().execute("SELECT drawing_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' AND machine = ?", (code,)).fetchone():
                     return messagebox.showerror("LINKED BOX DUPLICATE ERROR", f"❌ DUPLICATE RESTRICTION!\nOUTER BOX[{code}] ALREADY SCANNED AT OTHER INVOICE!", parent=win_inv)
-    except Exception as e: return messagebox.showerror("ERROR", str(e), parent=win_inv)
+    except Exception as e: 
+        return messagebox.showerror("ERROR", str(e), parent=win_inv)
 
     data_1 = dapatkan_maklumat_outer(senarai_outer[0])
-    if not data_1: return messagebox.showerror("ERROR", f"OUTER BOX [{senarai_outer[0]}] Slot 1 CANNOT BE FOUND!", parent=win_inv)
+    if not data_1: 
+        return messagebox.showerror("ERROR", f"OUTER BOX [{senarai_outer[0]}] Slot 1 CANNOT BE FOUND!", parent=win_inv)
     customer_utama, part_utama, qty_pcs_str = data_1
     total_qty, total_box, senarai_kad = 0, len(senarai_outer), []
 
-    tarikh_pola, tarikh_folder = datetime.datetime.now().strftime("%y%m%d"), datetime.datetime.now().strftime("%d-%m-%Y")
+    tarikh_pola = datetime.datetime.now().strftime("%y%m%d")
+    
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn_save:
             cursor = conn_save.cursor()
             for idx, code in enumerate(senarai_outer, start=1):
                 res = dapatkan_maklumat_outer(code)
-                if not res: return messagebox.showerror("ERROR", f"OUTER BOX[{code}] CANNOT BE FOUND!", parent=win_inv)
+                if not res: 
+                    return messagebox.showerror("ERROR", f"OUTER BOX[{code}] CANNOT BE FOUND!", parent=win_inv)
+                
                 qty_clean = str(res[2]).upper().replace("PCS","").strip()
-                if qty_clean.isdigit(): total_qty = int(qty_clean)
+                if qty_clean.isdigit(): 
+                    total_qty = int(qty_clean)
+                else:
+                    try: total_qty = int(float(qty_clean))
+                    except: total_qty = 0
                 
                 cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (f"INV{tarikh_pola}%",))
                 max_r = cursor.fetchone()
-                bil = int(str(max_r[0])[-4:]) + 1 if (max_r and max_r[0]) else 1
+                
+                bil = int(str(max_r[0])[-4:]) if (max_r and max_r[0]) else 0
+                bil += 1
                 seq = f"INV{tarikh_pola}{bil:04d}"
                 paging = f"BOX {idx}/{total_box}"
                 
                 cursor.execute("INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no) VALUES (?,?,?,?,?,?,?,?,?)",
                                (tarikh_str, customer_utama, f"INV:{inv_no}", f"SO:{so_no}", f"{total_qty} PCS", datetime.datetime.now().strftime("%I:%M:%S %p"), code, paging, seq))
                 
-                qr = qrcode.QRCode(version=1, box_size=10, border=1); qr.add_data(seq); qr.make(fit=True)
-                img = lid.bina_imej_invoice(qr.make_image().convert("RGB"), inv_no, so_no, code, f"{total_qty} PCS", seq, paging, customer_utama)
-                senarai_kad.append((img, paging))
+                # 🌟 KOREKSI UTAMA ISU 1: Menjana QR Code dan menghantar 8 parameter yang sepadan dengan fungsi 'bina_imej_invoice'
+                qr = qrcode.QRCode(version=1, box_size=10, border=1)
+                qr.add_data(seq)
+                qr.make(fit=True)
+                img_qr = qr.make_image(fill_color="black", back_color="white")
                 
-                folder = os.path.join("INVOICE_STICKER", tarikh_folder, bersihkan_nama_folder(customer_utama))
-                if not os.path.exists(folder): os.makedirs(folder)
-                img.save(os.path.join(folder, f"INVOICE_STICKER_{inv_no}_BOX_{idx}.png"), "PNG")
+                try:
+                    # Memanggil fungsi reka bentuk stiker yang betul dari label_invoice_designer.py
+                    img_stiker = lid.bina_imej_invoice(
+                        img_qr=img_qr,
+                        invoice_no=inv_no,
+                        so_no=so_no,
+                        outer_seq=code,
+                        outer_qty=f"{total_qty} PCS",
+                        seq_inv_spesifik=seq,
+                        text_paging=paging,
+                        customer=customer_utama
+                    )
+                    if img_stiker:
+                        senarai_kad.append((img_stiker, paging))
+                except AttributeError:
+                    return messagebox.showerror("DESIGNER ERROR", "Fungsi 'bina_imej_invoice' gagal dipanggil dari fail label_invoice_designer.py", parent=win_inv)
+            
             conn_save.commit()
-
-        if btn_submit_ref: btn_submit_ref.config(state="disabled", text="🔒 REGISTRATION LOCKED (COMPLETED)", bg="#64748B")
-        for e in entries_outer: e.config(state="disabled")
-        entry_inv.config(state="disabled"); entry_so.config(state="disabled")
-        
-        messagebox.showinfo("Success", f"Invoice Registration [{inv_no}] successful!", parent=win_inv)
+            
         paparkan_pop_up_invoice_pukal(win_inv, entry_inv, entry_so, entries_outer, senarai_kad, inv_no, customer_utama)
-    except Exception as e: messagebox.showerror("Database Error", str(e), parent=win_inv)
+        
+    except Exception as e:
+        messagebox.showerror("DATABASE TRANSACTION ERROR", f"Gagal memproses transaksi: {str(e)}", parent=win_inv)

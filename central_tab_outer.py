@@ -35,7 +35,7 @@ def bina_tab_outer(tab_outer_frame, frame_top2, root, pratonton_fn, padam_fn):
     tk.Button(frame_top2, text="SEARCH", command=lambda: logic.carian_outer(jadual_outer, entry_search2), bg="#0D6EFD", fg="white", font=("Segoe UI", 9, "bold"), width=9, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
     tk.Button(frame_top2, text="RESET", command=lambda: [entry_search2.delete(0, tk.END), logic.carian_outer(jadual_outer, entry_search2)], bg="#6C757D", fg="white", font=("Segoe UI", 9, "bold"), width=9, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
     tk.Button(frame_top2, text="PREVIEW SELECTED", command=lambda: pratonton_fn(jadual_outer, root, is_outer=True), bg="#198754", fg="white", font=("Segoe UI", 9, "bold"), width=18, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=10)
-    tk.Button(frame_top2, text="EDIT SELECTED", command=lambda: dem.buka_popup_edit(root, jadual_outer, entry_search2, 2), bg="#FD7E14", fg="white", font=("Segoe UI", 9, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
+    #tk.Button(frame_top2, text="EDIT SELECTED", command=lambda: dem.buka_popup_edit(root, jadual_outer, entry_search2, 2), bg="#FD7E14", fg="white", font=("Segoe UI", 9, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
     tk.Button(frame_top2, text="DELETE SELECTED", command=lambda: padam_fn(jadual_outer, entry_search2, is_outer=True), bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold"), width=15, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
     tk.Button(frame_top2, text="📥 EXPORT CSV", command=logic.eksport_outer_excel, bg="#212529", fg="white", font=("Segoe UI", 9, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=2)
     

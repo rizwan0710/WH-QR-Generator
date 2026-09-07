@@ -2,6 +2,7 @@ import os
 import sys
 import tkinter as tk
 from tkinter import messagebox, filedialog
+import invoice_print_manager  # Membawa masuk fungsi penggabung cetakan kelompok
 
 def cetak_kad_tunggal(img_label):
     """
@@ -24,6 +25,41 @@ def cetak_kad_tunggal(img_label):
             return True
     except Exception as e:
         print(f"Invoice logic file printing error: {str(e)}")
+        return False
+
+def laksanakan_cetak_pukal_invoice(senarai_data_borang, enjin_penjana_grafik):
+    """
+    🔥 FUNGSI UTAMA BATCH PRINTING FORM INVOICE (1 WINDOW POP-UP) 🔥
+    Menerima himpunan data rekod invois, menjana grafik bagi setiap label ke RAM, 
+    dan menghantarnya sekaligus supaya keluar hanya 1 pop-up tetingkap cetakan.
+    
+    :param senarai_data_borang: List berisi dictionary data invois dari Form UI
+    :param enjin_penjana_grafik: Fungsi callback reka bentuk label (e.g. fungsi designer)
+    """
+    if not senarai_data_borang:
+        messagebox.showwarning("PERINGATAN BATCH", "Tiada data invois yang dipilih untuk dicetak.")
+        return False
+        
+    bakul_imej_label = []
+    
+    try:
+        # 1. Kumpulkan semua imej label ke dalam satu bakul senarai di dalam memori
+        for data_rekod in senarai_data_borang:
+            # Jana objek PIL Image berdasarkan struktur data borang invois semasa
+            img_label = enjin_penjana_grafik(data_rekod)
+            if img_label:
+                bakul_imej_label.append(img_label)
+                
+        # 2. Hantar keseluruhan senarai imej ke Print Manager di LUAR gelung (loop)
+        if bakul_imej_label:
+            berjaya = invoice_print_manager.cetak_a4_batch(bakul_imej_label)
+            return berjaya
+        else:
+            messagebox.showerror("RALAT GRAFIK", "Gagal menjana grafik imej stiker bagi rekod invois.")
+            return False
+            
+    except Exception as e:
+        messagebox.showerror("RALAT PROSES CETAK", f"Sistem gagal memproses cetakan pukal:\n{str(e)}")
         return False
 
 def simpan_qr_manual(img_label, seq_val):
@@ -65,7 +101,6 @@ def laksanakan_semakan_integriti_data(data_peta):
             
         return True
         
-    # 🌟 SELESAI MASALAH SYNTAXERROR: Jarak wajib diletakkan di antara 'except' dan 'Exception'
     except Exception as e:
         print(f"Integriti log ralat: {str(e)}")
         return False

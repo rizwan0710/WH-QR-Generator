@@ -1,6 +1,46 @@
 import sqlite3
+import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
+
+def record_edit_activity(jenis_tab, description):
+    """
+    ⚡ ENJIN REKOD AUDIT LOG AUTO-TRANSAKSI (FIXED ATTRIBUTE ERROR) ⚡
+    Menyimpan data log aktiviti suntingan (Edit) ke dalam pangkalan data secara automatik
+    apabila operator menekan butang SAVE CHANGES pada panel edit.
+    """
+    try:
+        # Dapatkan tarikh dan masa semasa secara dinamik mengikut masa sistem kilang
+        sekarang = datetime.datetime.now()
+        tarikh_str = sekarang.strftime("%d/%m/%Y")
+        masa_str = sekarang.strftime("%I:%M:%S %p")
+        
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            # Memastikan jadual log_aktiviti wujud sekiranya belum dibina dalam SQLite
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS log_aktiviti (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tarikh TEXT,
+                    masa TEXT,
+                    jenis_tab TEXT,
+                    description TEXT
+                )
+            """)
+            
+            # Masukkan entri suntingan baharu secara selamat (Parameterized Query)
+            cursor.execute(
+                "INSERT INTO log_aktiviti (tarikh, masa, jenis_tab, description) VALUES (?, ?, ?, ?)",
+                (tarikh_str, masa_str, str(jenis_tab).strip().upper(), str(description).strip())
+            )
+            conn.commit()
+            print(f"✔️ Audit Log Berjaya Direkod: [{jenis_tab}] {description}")
+            return True
+    except Exception as e:
+        # Log ralat ke konsol lantai kilang sekiranya transaksi pangkalan data sibuk
+        print(f"❌ Gagal menulis ke log_aktiviti: {str(e)}")
+        return False
 
 def load_edit_logs_data(tree, ent):
     """🌟 GLOBAL SEARCH FOR ALL HEADERS (SHORT) 🌟"""

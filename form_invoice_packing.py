@@ -6,6 +6,9 @@ import form_invoice_packing_logic as logic
 # Import fail logik pembantu dinamik baru yang telah dipecahkan
 import form_invoice_packing_helper as helper
 
+# Import fail logik utama invois untuk mengaktifkan fungsi cetakan pukal (1 Window Pop-Up)
+import invoice_packing_logic
+
 def buka_borang_invoice(root):
     """🌟 UPGRADED INVOICE DYNAMIC SCROLL CONTAINER UI (WITH FIXED CALENDAR & FOCUS INDEX) 🌟"""
     win_inv = tk.Toplevel(root)
@@ -75,7 +78,6 @@ def buka_borang_invoice(root):
     
     def aksi_apply_total_box():
         helper.laksanakan_penjanaan_kotak_pukal(entry_total_box, frame_scroll_content, entries_outer, var_customer, lbl_counter)
-        # 🌟 KOREKSI UTAMA BARIS 82: Memanggil kotak indeks pertama [0] di dalam list untuk menerima focus_set 🌟
         if entries_outer and len(entries_outer) > 0:
             entries_outer[0].focus_set()
 
@@ -110,8 +112,18 @@ def buka_borang_invoice(root):
     entry_so_no.bind("<Return>", lambda event: entry_total_box.focus_set())
     entry_total_box.bind("<Return>", lambda event: aksi_apply_total_box())
 
-    # ─── Barisan Butang Kawalan Aksi Bawah ───
-    tk.Button(win_inv, text="SUBMIT & GENERATE INVOICE QR", command=lambda: logic.proses_submit_invoice(win_inv, entry_date, entry_inv_no, entry_so_no, entries_outer, win_inv.children.get("!button")), bg="#007ACC", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=25, pady=(0, 4))
+    def eksekusi_submit_dan_cetak_pukal():
+        logic.proses_submit_invoice(
+            win_inv, 
+            entry_date, 
+            entry_inv_no, 
+            entry_so_no, 
+            entries_outer, 
+            win_inv.children.get("!button")
+        )
+
+    # ─── Barisan Butang Kawalan Aksi Bawah (NAMA BUTANG TELAH DITUKAR ASAL) ───
+    tk.Button(win_inv, text="SUBMIT & PRINT INVOICE QR", command=eksekusi_submit_dan_cetak_pukal, bg="#007ACC", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=25, pady=(0, 4))
     
     frame_action_bar = tk.Frame(win_inv, bg="#F8F9FA")
     frame_action_bar.pack(fill="x", padx=25, pady=(0, 15))
