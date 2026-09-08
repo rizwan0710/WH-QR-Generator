@@ -1,5 +1,6 @@
 import sqlite3, os, shutil, sys, time, threading, tkinter as tk
 from tkinter import messagebox, ttk
+import invoice_tab_logic  # 🌟 Menyambungkan enjin pratinjau invoice murni yang kalis ralat tuple
 
 def siapkan_database():
     for f in ["INNER_STICKER", "OUTER_STICKER", "INVOICE_STICKER"]:
@@ -25,29 +26,25 @@ def padam_terpilih(jadual, entry):
         for i in tanda: jadual.delete(i)
 
 def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
+    """
+    🎛️ GERBANG PRATONTON SERAGAM DATABASE (MUTTAMAD & KALIS ERROR) 🎛️
+    Menguruskan pelencongan fungsi paparan stiker mengikut tab aktif masing-masing.
+    """
+    # 🌟 KUNCI PENYELESAIAN UTAMA TAB INVOICE:
+    # Jika is_invoice dihantar sebagai True, lencongkan aliran data terus ke enjin bersepadu invoice_tab_logic
+    if is_invoice:
+        return invoice_tab_logic.papar_pratonton_invoice_terpilih(jadual, jadual.winfo_toplevel())
+
     tanda_id = [i for i in jadual.get_children() if "☑" in str(jadual.set(i, "#1"))]
     if not tanda_id and jadual.selection(): tanda_id = list(jadual.selection())
     if not tanda_id: return messagebox.showwarning("Peringatan", "Sila tanda ☑ data!", parent=jadual.winfo_toplevel())
     
-    # ─── BATCH SELECTION (>1 BARIS): GABUNG 1 POP-UP INTERFACE ───
+    # ─── BATCH SELECTION (>1 BARIS): GABUNG 1 POP-UP INTERFACE (Hanya untuk Tab Inner & Outer) ───
     if len(tanda_id) > 1:
         img_m_list = []
         if is_outer:
             import central_tab_outer_logic as cto_l
             img_m_list = [cto_l.jana_grafik_outer_dari_row(jadual.item(i)['values']) for i in tanda_id]
-        elif is_invoice:
-            import label_invoice_designer as lid
-            import qrcode
-            for i in tanda_id:
-                seq = str(jadual.set(i, "Invoice Sequence No")).strip()
-                qr = qrcode.QRCode(version=1, box_size=10, border=1); qr.add_data(seq); qr.make(fit=True)
-                # 🌟 FIXED CALL: Menggunakan enjin lid.bina_imej_invoice yang sah daripada designer anda!
-                img_m_list.append(lid.bina_imej_invoice(
-                    qr.make_image().convert("RGB"),
-                    str(jadual.set(i, "Invoice No")), str(jadual.set(i, "SO No")),
-                    str(jadual.set(i, "Linked Outer Box")), str(jadual.set(i, "Quantity")),
-                    seq, str(jadual.set(i, "Page Status")), str(jadual.set(i, "Customer"))
-                ))
         else:
             import central_tab_inner_logic as cti_l
             img_m_list = [cti_l.jana_grafik_label_dari_row(jadual.item(i)['values']) for i in tanda_id]
@@ -56,12 +53,9 @@ def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
             import database_batch_preview
             return database_batch_preview.buka_popup_database_pukal_seragam(jadual.winfo_toplevel(), img_m_list, is_outer, is_invoice)
 
-    # ─── REKOD TUNGGAL (1 SELECTION SLIDER) ───
+    # ─── REKOD TUNGGAL SELECTION (Hanya untuk Tab Inner & Outer) ───
     if is_outer and __import__("central_tab_outer_wizard"): 
         __import__("central_tab_outer_wizard").buka_popup_pukal_outer_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
-    elif is_invoice:
-        import central_tab_invoice_wizard as cti_w
-        cti_w.buka_popup_pukal_invoice_1by1(jadual, jadual.winfo_toplevel())
     elif __import__("central_tab_inner_wizard"): 
         __import__("central_tab_inner_wizard").buka_popup_pukal_inner_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
 

@@ -7,9 +7,9 @@ import os
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
     """
-    🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD & STANDARDIZED UI) 🌟
-    Jika 1 data: Keluar 3 butang bersih (PRINT, SAVE, CLOSE) tanpa navigasi.
-    Jika >1 data: Keluar 5 butang batch beserta butang selak PREVIOUS/NEXT.
+    🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD: EXACT BATCH UI MATCH) 🌟
+    Menyelaraskan butang mod kelompok (>1) kepada 3 butang: PRINT ALL, SAVE ALL, CLOSE
+    mengikut imej rujukan dengan kod warna hijau #22C55E dan oren #F59E0B.
     """
     if not senarai_kad_tunggal:
         return
@@ -24,7 +24,8 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
     senarai_kad_pembungkus_lokal = senarai_kad_tunggal
     total_label = len(senarai_kad_pembungkus_lokal)
 
-    lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#EA580C", bg="#F8F9FA")
+    # Header menggunakan warna hijau #22C55E untuk keseragaman reka bentuk
+    lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#22C55E", bg="#F8F9FA")
     lbl_header.pack(pady=12)
 
     frame_canvas_bg = tk.Frame(tingkap_popup, bg="white", bd=1, relief="groove")
@@ -61,15 +62,10 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
             kemaskini_paparan_selak()
 
     def cetak_semua_pukal():
-        """🔥 ENJIN BATCH PRINT INVOICE: Menggabungkan semua stiker ke dalam 1 pop-up tingkap printer Windows 🔥"""
+        """🔥 ENJIN BATCH PRINT INVOICE 🔥"""
         if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} THIS LABEL IN ONE WINDOW?", parent=tingkap_popup):
-            # Ekstrak senarai imej bersih (PIL Image) sahaja daripada gandingan tuple
             imej_bersih_list = [img for img, _ in senarai_kad_pembungkus_lokal]
-            
-            # Panggil enjin cantuman menegak bersatu dari print manager
-            berjaya = invoice_print_manager.cetak_a4_batch(imej_bersih_list)
-            if berjaya:
-                messagebox.showinfo("SUCCESS", f"ALL {total_label} LABEL MANAGE TO SEND TO ONE PRINT WINDOW!", parent=tingkap_popup)
+            invoice_print_manager.cetak_a4_batch(imej_bersih_list)
 
     def simpan_semua_pukal():
         folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL", parent=tingkap_popup)
@@ -92,7 +88,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
             img_kad.save(path_fail, "PNG")
             messagebox.showinfo("COMPLETE", "LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
 
-    # ─── 1. BAR NAVIGASI SELAK HALAMAN STANDARDIZED (Hanya pack jika data > 1) ───
+    # ─── 1. BAR NAVIGASI SELAK HALAMAN (Warna gelap #374151 mengikut imej rujukan) ───
     frame_nav = tk.Frame(tingkap_popup, bg="#F8F9FA")
     btn_prev = tk.Button(frame_nav, text="◀ PREVIOUS", command=halaman_ke_kiri, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_prev.pack(side=tk.LEFT, padx=8)
@@ -102,23 +98,21 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no):
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. BARIS BUTANG KAWALAN FLAT STYLE SERAGAM (DINAMIK & KALIS TUPLE ERROR) ───
+    # ─── 2. BARIS BUTANG KAWALAN BAWAH (STANDARD FLAT UI) ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
     if total_label == 1:
-        # 🌟 FIXED INDEKS TUNGGAL: Paksa ambil indeks [0][0] untuk imej tulen sebelum dicetak
-        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: invoice_print_manager.cetak_a4_master(senarai_kad_pembungkus_lokal[0][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        # Mod Tunggal (Single Data): PRINT, SAVE, CLOSE
+        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: invoice_print_manager.cetak_a4_master(senarai_kad_pembungkus_lokal), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        # 🌟 FIXED INDEKS CURRENT: Mengambil objek imej bersih di indeks [indeks_halaman][0] untuk cetakan tunggal aktif
-        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: invoice_print_manager.cetak_a4_master(senarai_kad_pembungkus_lokal[indeks_halaman][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="🔥 PRINT ALL (1 WINDOW)", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="💾 SAVE CURRENT", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="📦 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
+        # 🌟 Mod Pukal (Batch Data > 1): TUKAR KEPADA PRINT ALL, SAVE ALL, CLOSE (Sama seperti Imej Rujukan)
+        tk.Button(frame_btn, text="🖨️ PRINT ALL", command=cetak_semua_pukal, bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()

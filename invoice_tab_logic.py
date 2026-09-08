@@ -1,7 +1,10 @@
- import sqlite3
+import sqlite3
 import csv
+import qrcode
 import tkinter as tk
 from tkinter import messagebox, filedialog
+import label_invoice_designer as lid
+import invoice_preview_window
 
 baris_hover_terakhir = None
 
@@ -44,27 +47,80 @@ def carian_invoice(jadual, entry_search):
                 semua_rekod = cursor.fetchall()
                 
             for r in semua_rekod:
-                # r[0]=id, r[1]=sequence_no, r[2]=tarikh, r[3]=drawing_no (Invoice No)
-                # r[4]=part_no (SO No), r[5]=quantity, r[6]=machine (Linked Outer)
-                # r[7]=lotcard_no (Page Status), r[8]=customer
-                
                 inv_clean  = str(r[3]).upper().replace("INV:", "").strip()
                 so_clean   = str(r[4]).upper().replace("SO:", "").strip()
                 cust_clean = str(r[8]).upper().strip() if r[8] else "YAMAHA"
                 page_stat  = str(r[7]).upper().strip() if r[7] else "BOX 1/1"
                 outer_link = str(r[6]).upper().strip() if r[6] else "NONE"
-                
-                # 🌟 KUNCI REFRESH INVOICE: Ambil nilai kuantiti segar dari lajur quantity database (r[5])
                 qty_clean  = f"{str(r[5]).upper().replace('PCS', '').strip()} PCS"
                 
-                # Susunan lajur Treeview Invoice:
-                # ("Select", "ID", "Date", "Customer", "Invoice No", "SO No", "Quantity", "Page Status", "Linked Outer Box", "Box Type", "Invoice Sequence No")
+                # Lajur Treeview: ("Select", "ID", "Date", "Customer", "Invoice No", "SO No", "Quantity", "Page Status", "Linked Outer Box", "Box Type", "Invoice Sequence No")
                 jadual.insert("", tk.END, values=(
                     "☐", r[0], r[2], cust_clean, inv_clean, so_clean, qty_clean, page_stat, outer_link, "INVOICE LOG", r[1]
                 ), tags=('normal',))
                 
     except sqlite3.Error as e:
         messagebox.showerror("DATA ERROR", f"FAILED TO PREVIEW INVOICE INFORMATION :\n{str(e)}")
+
+def papar_pratonton_invoice_terpilih(jadual, win):
+    """🌟 BUTANG PREVIEW DATABASE DI TAB INVOICE FIXED 🌟"""
+    item_terpilih = []
+    
+    # Imbas semua baris dalam Treeview untuk mencari yang telah di-tanda (☑)
+    for item_id in jadual.get_children():
+        nilai_baris = jadual.item(item_id)['values']
+        if nilai_baris and "☑" in str(nilai_baris[0]):
+            item_terpilih.append(nilai_baris)
+            
+    if not item_terpilih:
+        messagebox.showwarning("NO SELECTION", "PLEASE TICK (☑) AT LEAST ONE INVOICE RECORD TO PREVIEW!")
+        return
+
+    # Ambil Invoice No daripada item pertama untuk tajuk tetingkap popup
+    inv_no_induk = item_terpilih[0][4]
+    senarai_kad_stiker = []
+
+    try:
+        for r in item_terpilih:
+            # Pengekstrakan nilai mengikut susunan indeks lajur Treeview
+            cust_name = str(r[3])
+            inv_no    = str(r[4])
+            so_no     = str(r[5])
+            qty_str   = str(r[6])
+            page_stat = str(r[7])
+            outer_seq = str(r[8])
+            seq_inv   = str(r[10]) # Invoice Sequence No (e.g. INV26xxxx)
+
+            # 1. Bina semula Kod QR secara on-the-fly berdasarkan data Sequence No asal
+            qr = qrcode.QRCode(version=1, border=1)
+            qr.add_data(seq_inv)
+            qr.make(fit=True)
+            im_qr = qr.make_image()
+
+            # 2. Hasilkan semula imej stiker grafik melalui modul label designer
+            stk_img = lid.bina_imej_invoice(
+                img_qr=im_qr, 
+                invoice_no=inv_no, 
+                so_no=so_no, 
+                outer_seq=outer_seq, 
+                outer_qty=qty_str, 
+                seq_inv_spesifik=seq_inv, 
+                text_paging=page_stat, 
+                customer=cust_name
+            )
+            
+            if stk_img:
+                # Masukkan ke dalam format tuple yang diperlukan oleh panel pratonton (Image, Text_Paging)
+                senarai_kad_stiker.append((stk_img, page_stat))
+
+        if senarai_kad_stiker:
+            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan
+            invoice_preview_window.buka_popup_individual_1by1(win, senarai_kad_stiker, inv_no_induk)
+        else:
+            messagebox.showerror("RENDER ERROR", "FAILED TO GENERATE GRAPHICAL IMAGE LABELS FOR PREVIEW.")
+
+    except Exception as e:
+        messagebox.showerror("PREVIEW EXCEPTION", f"SYSTEM ERROR DURING RENDERING:\n{str(e)}")
 
 def on_invoice_click(event, jadual):
     item_id = jadual.identify_row(event.y)
