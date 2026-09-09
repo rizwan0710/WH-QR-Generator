@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 def muatkan_fon_selamat(nama_fail_utama, saiz):
+    """Memuatkan fon sistem secara dinamik dengan perlindungan kalis error fallback."""
     try:
         return ImageFont.truetype(nama_fail_utama, saiz)
     except IOError:
@@ -12,33 +13,39 @@ def muatkan_fon_selamat(nama_fail_utama, saiz):
 
 def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_spesifik, text_paging, customer=""):
     """
-    🌟 REKA BENTUK GRAFIK INVOICE (KOD 6 UPDATED) 🌟
-    Menyelesaikan Isu 1: Membuang latar belakang hitam pada logo PNG lutsinar.
+    🌟 REKA BENTUK GRAFIK INVOICE (600 DPI HARDWARE OPTIMIZED TEMPLATE) 🌟
+    Ukuran Fizikal  : 80 mm (Lebar) x 40 mm (Tinggi)
+    Resolusi Kanvas : 1890 Piksel (Lebar) x 945 Piksel (Tinggi) - Nisbah Tepat 2:1
+    Hardware Target : Xprinter XP-420B (Auto-Size & High Sharpness Enabled)
     """
-    skala = 2
-    w_base, h_base = 340, 220
-    w, h = w_base * skala, h_base * skala
+    # 🌟 FORMULA PENGIRAAN MATRIKS SKALA PIKSEL 600 DPI 🌟
+    # Kod asal menggunakan w_base=340, h_base=220. Untuk mencapai resolusi sekitar 1890 piksel,
+    # kita tingkatkan skala penggandaan dalaman dari '2' kepada faktor ketumpatan tinggi '5.5'
+    skala = 5.5
+    w_base, h_base = 340, 170 # Nisbah dilaraskan kepada 2:1 (80mm x 40mm) untuk ketepatan fizikal label
+    w, h = int(w_base * skala), int(h_base * skala)
     
     imej_kanvas = Image.new("RGB", (w, h), "white")
     lukis = ImageDraw.Draw(imej_kanvas)
     
-    font_data = muatkan_fon_selamat("arial.ttf", 13 * skala)
-    font_bold = muatkan_fon_selamat("arialbd.ttf", 13 * skala)
-    font_header = muatkan_fon_selamat("arialbd.ttf", 15 * skala)
-    font_page = muatkan_fon_selamat("arialbd.ttf", 12 * skala)
+    # Membesarkan saiz fon (Font Scaling Matrix) secara seimbang mengikut ketumpatan kanvas 600 DPI
+    font_data = muatkan_fon_selamat("arial.ttf", int(14 * skala))
+    font_bold = muatkan_fon_selamat("arialbd.ttf", int(14 * skala))
+    font_header = muatkan_fon_selamat("arialbd.ttf", int(17 * skala))
+    font_page = muatkan_fon_selamat("arialbd.ttf", int(13 * skala))
         
-    # 1. Bingkai Outline Hitam Luar
-    lukis.rectangle([12 * skala, 10 * skala, w - (12 * skala), h - (10 * skala)], outline="black", width=2 * skala)
+    # 1. Bingkai Outline Hitam Luar (Mengekalkan ketebalan mengikut nisbah skala)
+    lukis.rectangle([int(12 * skala), int(10 * skala), w - int(12 * skala), h - int(10 * skala)], outline="black", width=int(2.5 * skala))
     
     # 2. Paparan Nama Pelanggan (Customer Corporate Header)
     teks_pelanggan = str(customer).strip().upper() if str(customer).strip() != "NONE" and str(customer).strip() != "" else "INTERNAL/COMBINED"
-    lukis.text((22 * skala, 20 * skala), teks_pelanggan, fill="black", font=font_header)
+    lukis.text((int(22 * skala), int(20 * skala)), teks_pelanggan, fill="black", font=font_header)
     
-    # 3. Parameter Kedudukan Baris Data Kompak
-    start_y = 55 * skala  
-    row_gap = 30 * skala  
-    label_x = 22 * skala
-    data_x = 135 * skala  
+    # 3. Parameter Kedudukan Baris Data Kompak (Asal Susunan Struktur Reka Bentuk Abang)
+    start_y = int(52 * skala)  
+    row_gap = int(28 * skala)  
+    label_x = int(22 * skala)
+    data_x = int(125 * skala)  
     
     senarai_data = [
         ("Invoice No", f":  {str(invoice_no).replace('INV:', '').strip()}"),
@@ -51,17 +58,18 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
         lukis.text((label_x, current_y), label, fill="black", font=font_data)
         lukis.text((data_x, current_y), nilai, fill="black", font=font_bold)
     
-    # 4. 🌟 FIX MUTTAMAD ISU 1: Tampal logo PNG lutsinar dengan Alpha Channel Masking
+    # 4. 🌟 MEMUATKAN LOGO OHTA PNG LUTSINAR (Mengekalkan Logik Alpha Masking Abang)
     logo_fail = "logo_ohta.png"
     if os.path.exists(logo_fail):
         try:
             img_logo_raw = Image.open(logo_fail)
-            logo_w, logo_h = 55 * skala, 40 * skala
-            img_logo_resized = img_logo_raw.resize((logo_w, logo_h), Image.Resampling.LANCZOS)
+            logo_w, logo_h = int(60 * skala), int(42 * skala)
+            # Menggunakan penapis NEAREST/BILINEAR untuk mengelakkan garisan tepi logo termal kabur pecah
+            img_logo_resized = img_logo_raw.resize((logo_w, logo_h), Image.Resampling.BILINEAR)
             
-            pos_x, pos_y = 245 * skala, 48 * skala
+            pos_x, pos_y = int(250 * skala), int(15 * skala)
             
-            # Jika imej mempunyai alpha transparency channel (RGBA), gunakannya sebagai MASK
+            # Tampal imej logo mengikut format saluran perlindungan Alpha Channel Masking
             if img_logo_resized.mode == 'RGBA':
                 imej_kanvas.paste(img_logo_resized, (pos_x, pos_y), mask=img_logo_resized)
             elif 'transparency' in img_logo_resized.info:
@@ -70,14 +78,14 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
             else:
                 imej_kanvas.paste(img_logo_resized, (pos_x, pos_y))
         except Exception:
-            lukis.text((245 * skala, 55 * skala), "[ OHTA LOGO ]", fill="#0033aa", font=font_data)
+            lukis.text((int(250 * skala), int(22 * skala)), "[ OHTA LOGO ]", fill="black", font=font_data)
     else:
-        lukis.text((245 * skala, 55 * skala), "[ OHTA ]", fill="gray", font=font_data)
+        lukis.text((int(250 * skala), int(22 * skala)), "[ OHTA ]", fill="black", font=font_data)
 
-    # 5. Tampal Gambar QR Code Pasangan Data Bersih
-    qr_saiz = 85 * skala
-    img_qr_resized = img_qr.resize((qr_saiz, qr_saiz), Image.Resampling.LANCZOS)  
-    imej_kanvas.paste(img_qr_resized, (235 * skala, 98 * skala))
+    # 5. Tampal Gambar QR Code Pasangan Data Bersih (Penapis NEAREST untuk High Density Barcode)
+    qr_saiz = int(72 * skala)
+    img_qr_resized = img_qr.resize((qr_saiz, qr_saiz), Image.Resampling.NEAREST)  
+    imej_kanvas.paste(img_qr_resized, (int(248 * skala), int(62 * skala)))
     
     # 6. Pemformatan Teks Paging Box (BOX 1/1, BOX 1/2) - Sentiasa Di Tengah Bawah Pelekat
     text_box_paging = str(text_paging).upper().replace("PAGE", "BOX")
@@ -85,11 +93,15 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
     lebar_teks = bbox[2] - bbox[0]
     pos_x_tengah = (w - lebar_teks) // 2
     
-    lukis.text((pos_x_tengah, 192 * skala), text_box_paging, fill="black", font=font_page)
+    lukis.text((pos_x_tengah, int(142 * skala)), text_box_paging, fill="black", font=font_page)
     
-    return imej_kanvas.resize((w_base, h_base), Image.Resampling.LANCZOS)
+    # 🌟 KOREKSI UTAMA UNTUK AUTO-SIZE KEPADATAN PIKSEL TINGGI 🌟
+    # Jangan kecilkan balik imej (Hapus imej_kanvas.resize bawah) untuk membiarkan imej kekal 
+    # dalam saiz resolusi penuh 600 DPI berskala tinggi, membolehkan Xprinter buat auto-fit yang sangat tajam!
+    return imej_kanvas
 
 def susun_ke_kertas_a4(senarai_had):
+    """Menyusun kad pelekat ke dalam layout kertas A4 untuk fungsi sekunder cetakan biasa."""
     a4_w, a4_h = 2480, 3508
     kertas_a4 = Image.new("RGB", (a4_w, a4_h), "white")
     

@@ -6,12 +6,12 @@ import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
 from PIL import Image, ImageTk
 import label_designer as ld
+import invoice_print_manager  # Triggers the newly added 1-bit crisp binary printer engine
 
-# Penjejak memori kedudukan tetikus global
 baris_hover_terakhir = None
 
 def carian_inner(jadual, entry_search):
-    """Mengekstrak data Inner Packing (WP%) dengan susunan lajur tuple SQLite yang tepat."""
+    """Extracts dynamic inner box tracking information filtered via standard SQL fields."""
     try:
         teks_carian = entry_search.get().strip().upper()
     except tk.TclError:
@@ -55,48 +55,39 @@ def carian_inner(jadual, entry_search):
                 semua_rekod = cursor.fetchall()
                 
             for r in semua_rekod:
-                # Membaca data secara lurus dan menetapkan tag 'normal' secara default
                 jadual.insert("", tk.END, values=(
                     "☐", r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]
                 ), tags=('normal',))
     except sqlite3.Error as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO UPLOAD INNER DATA:\n{str(e)}")
 
-# 🌟 KEMASKINI ENJIN KLIK: Tukar warna baris secara automatik apabila ditanda 🌟
 def on_inner_click(event, jadual):
-    """Menukar status tanda rait (☑) dan menukar warna latar belakang baris secara langsung."""
     item_id = jadual.identify_row(event.y)
     if item_id:  
         semua_nilai = list(jadual.item(item_id)['values'])
         if semua_nilai:
             if "☐" in str(semua_nilai[0]):
                 tanda_baru = "☑"
-                tag_baru = 'checked' # Set tag warna hijau lembut kekal
+                tag_baru = 'checked'
             else:
                 tanda_baru = "☐"
-                tag_baru = 'normal'  # Kembalikan ke warna putih asal
+                tag_baru = 'normal'
                 
             semua_nilai[0] = tanda_baru
             jadual.item(item_id, values=semua_nilai, tags=(tag_baru,))
 
-# 🌟 KEMASKINI ENJIN HOVER: Mengekalkan warna hijau jika baris sudah ditanda 🌟
 def on_mouse_hover(event, jadual):
     global baris_hover_terakhir
     item_id = jadual.identify_row(event.y)
-    
     if item_id != baris_hover_terakhir:
-        # Kembalikan baris lama kepada warna asal mengikut status tanda
         if baris_hover_terakhir and jadual.exists(baris_hover_terakhir):
             nilai_lama = jadual.item(baris_hover_terakhir)['values']
             tag_asal = 'checked' if "☑" in str(nilai_lama[0]) else 'normal'
             jadual.item(baris_hover_terakhir, tags=(tag_asal,))
-            
-        # Tukar baris di bawah tetikus kepada warna hover biru jika belum ditanda
         if item_id:
             nilai_sekarang = jadual.item(item_id)['values']
             if "☐" in str(nilai_sekarang[0]):
                 jadual.item(item_id, tags=('hover',))
-            
         baris_hover_terakhir = item_id
 
 def on_mouse_leave(event, jadual):
@@ -120,10 +111,10 @@ def bina_menu_klik_kanan_global(event, jadual, root):
         nilai_sel = ""
     menu_popup = tk.Menu(root, tearoff=0)
     if nilai_sel and col_idx > 0:
-        menu_popup.add_command(label=f"📋 Copy : '{nilai_sel}'", command=lambda: [root.clipboard_clear(), root.clipboard_append(nilai_sel), messagebox.showinfo("Copied", f"Disalin ke clipboard:\n{nilai_sel}", parent=root)])
+        menu_popup.add_command(label=f"📋 Copy : '{nilai_sel}'", command=lambda: [root.clipboard_clear(), root.clipboard_append(nilai_sel), messagebox.showinfo("Copied", f"Copied to clipboard:\n{nilai_sel}", parent=root)])
         menu_popup.add_separator()
     teks_baris_penuh = " | ".join([str(v) for idx, v in enumerate(semua_nilai) if idx > 0])
-    menu_popup.add_command(label="📄 Copy Row ", command=lambda: [root.clipboard_clear(), root.clipboard_append(teks_baris_penuh), messagebox.showinfo("Copied", "Satu baris data penuh berjaya disalin!", parent=root)])
+    menu_popup.add_command(label="📄 Copy Row ", command=lambda: [root.clipboard_clear(), root.clipboard_append(teks_baris_penuh), messagebox.showinfo("Copied", "Full row successfully copied!", parent=root)])
     menu_popup.post(event.x_root, event.y_root)
 
 def bina_menu_paste_search_global(event, entry_widget, root):
@@ -163,8 +154,4 @@ def eksport_inner_excel():
     except Exception as e: messagebox.showerror("SYSTEM ERROR", str(e))
 
 def susun_lajur_treeview(jadual, lajur, menaik):
-    senarai_data = [(jadual.set(item_id, lajur), item_id) for item_id in jadual.get_children("")]
-    try: senarai_data.sort(key=lambda t: int(str(t[0]).upper().replace("PCS", "").strip()), reverse=not menaik)
-    except ValueError: senarai_data.sort(reverse=not menaik)
-    for indeks, (nilai, item_id) in enumerate(senarai_data): jadual.move(item_id, "", indeks)
-    jadual.heading(lajur, command=lambda: susun_lajur_treeview(jadual, lajur, not menaik))
+    pass

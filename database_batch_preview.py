@@ -4,21 +4,22 @@ import time
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 from PIL import Image, ImageTk
+import invoice_print_manager  # Pautan enjin cetak pukal Windows Photo Wizard
 
-# Standardized blueprint action button styling layouts
+# Rekabentuk gaya butang rata terstandarisasi mengikut rujukan gambar
 BTN_STYLE = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
 def laksanakan_windows_photo_wizard_tunggal(image_list):
     """
-    🖨️ WINDOWS PHOTO PRINTING WIZARD INTERFACE (DIRECT SHELL INJECTION) 🖨️
-    Saves all images to a temporary directory and invokes the native Windows
-    'Print Pictures' dialog EXACTLY ONCE for the entire batch.
+    🖨️ WINDOWS PHOTO PRINTING WIZARD INTERFACE 🖨️
+    Menyimpan semua imej ke folder sementara dan melancarkan tetingkap
+    'Print Pictures' terbina dalam Windows secara pukal dengan butang Next/Prev.
     """
     if not image_list:
         return False
         
     try:
-        temp_dir = os.path.join(os.environ.get("TEMP", "C:\\Temp"), "OHTA_BATCH_PRINT")
+        temp_dir = os.path.join(os.environ.get("TEMP", "C:\\Temp"), "OHTA_GLOBAL_BATCH_PRINT")
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
         else:
@@ -26,15 +27,11 @@ def laksanakan_windows_photo_wizard_tunggal(image_list):
                 try: os.remove(os.path.join(temp_dir, f))
                 except: pass
 
-        # Save each sticker into the temporary directory safely
         for idx, img_obj in enumerate(image_list):
-            # 🌟 INTERCEPT TUPLE: Jika item berupa tuple (Image, Seq), pecah dan ambil objek imej indeks 0
-            if isinstance(img_obj, (list, tuple)):
-                actual_img = img_obj[0]
-            else:
-                actual_img = img_obj
+            # Pengendalian kalis error sekiranya data dihantar dalam struktur tuple
+            actual_img = img_obj[0] if isinstance(img_obj, (list, tuple)) else img_obj
                 
-            file_path = os.path.join(temp_dir, f"STIKER_PAGE_{idx+1}.png")
+            file_path = os.path.join(temp_dir, f"STIKER_PAGE_{idx+1:03d}.png")
             actual_img.convert("RGB").save(file_path, "PNG")
 
         if sys.platform == "win32" and os.path.exists(temp_dir):
@@ -52,28 +49,28 @@ def laksanakan_windows_photo_wizard_tunggal(image_list):
         try:
             import win32api
             for idx, img_obj in enumerate(image_list):
-                actual_img = img_obj if not isinstance(img_obj, (list, tuple)) else img_obj[0]
-                file_path = os.path.join(temp_dir, f"STIKER_PAGE_{idx+1}.png")
+                actual_img = img_obj[0] if isinstance(img_obj, (list, tuple)) else img_obj
+                file_path = os.path.join(temp_dir, f"STIKER_PAGE_{idx+1:03d}.png")
                 win32api.ShellExecute(0, "print", file_path, None, ".", 0)
-                time.sleep(0.2)
+                time.sleep(0.15)
             return True
         except:
             return False
 
 def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=False, is_invoice=False):
     """
-    🌟 STANDARDIZED BATCH SLIDER WIZARD INTERFACE (TUPLE UNPACKING UNLOCKED) 🌟
-    Memastikan objek imej diekstrak dengan tepat dari sisa tuple bagi menghalang ralat 'has no attribute resize'.
+    🌟 STANDARDIZED GLOBAL BATCH SLIDER INTERFACE 🌟
+    Digunakan secara kongsi oleh Inner, Outer, dan Invoice apabila melihat pelbagai data dari pangkalan data.
+    Menyelaraskan rupa bentuk 4 butang dan warna eksak 100% sebijik mengikut gambar rujukan.
     """
     if not img_list_raw:
         messagebox.showwarning("WARNING", "No printable labels found in the selection scope!", parent=parent_window)
         return
 
-    # 🌟 KOREKSI UTAMA ENGINE UNPACKING: Asingkan objek imej Pillow tulen daripada rantaian tuple 🌟
+    # Normalisasi data imej bagi mengelakkan AttributeError semasa proses resize
     normalized_images = []
     for item in img_list_raw:
         if isinstance(item, (list, tuple)) and len(item) > 0:
-            # Jika ia memulangkan gandingan (Image, sequence_code), tapis elemen pertama murni
             normalized_images.append(item[0])
         else:
             normalized_images.append(item)
@@ -87,7 +84,8 @@ def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=Fals
     popup_window.configure(bg="#F8F9FA")
     popup_window.grab_set()
 
-    lbl_header = tk.Label(popup_window, text="", font=("Segoe UI", 10, "bold"), fg="#EA580C", bg="#F8F9FA")
+    # Tajuk header mengikut warna standard
+    lbl_header = tk.Label(popup_window, text="", font=("Segoe UI", 10, "bold"), fg="#10B981", bg="#F8F9FA")
     lbl_header.pack(pady=12)
 
     frame_canvas_container = tk.Frame(popup_window, bg="white", bd=1, relief="groove")
@@ -101,25 +99,22 @@ def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=Fals
         idx = current_index
         
         lbl_header.config(text=f"BATCH PREVIEW PANEL  |  LABEL COUNTER: {idx + 1}/{total_labels}")
-        
-        # Sila ambil imej yang sudah selamat di-normalize murni (pasti objek Image Pillow sah)
         img_target = normalized_images[idx]
         
+        # Penyelarasan dimensi saiz mengikut jenis entiti kotak
         if is_outer or is_invoice:
             resized_w, resized_h = 420, 240
         else:
             resized_w, resized_h = 360, 260
             
         try:
-            # Enjin pengecilan imej kalis ralat
             img_scaled = img_target.resize((resized_w, resized_h), Image.Resampling.LANCZOS)
             img_tk = ImageTk.PhotoImage(img_scaled)
-            
             label_image_viewport.config(image=img_tk, text="")
             label_image_viewport.image = img_tk 
         except Exception as e_render:
             print(f"Render fail context: {e_render}")
-            label_image_viewport.config(text="[ IMAGE RENDER ERROR - TUPLE DETECTED ]", fg="red")
+            label_image_viewport.config(text="[ IMAGE RENDER ERROR ]", fg="red")
         
         btn_prev.config(state="normal" if idx > 0 else "disabled")
         btn_next.config(state="normal" if idx < total_labels - 1 else "disabled")
@@ -136,9 +131,15 @@ def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=Fals
             current_index += 1
             refresh_wizard_viewport()
 
+    def trigger_single_print():
+        """Cetak stiker tunggal aktif yang sedang dipaparkan di skrin menggunakan print master"""
+        img_aktif = normalized_images[current_index]
+        invoice_print_manager.cetak_a4_master(img_aktif)
+
     def trigger_unified_batch_print():
-        """Fires the native Windows Print Pictures dialog setup exactly once."""
-        laksanakan_windows_photo_wizard_tunggal(normalized_images)
+        """Melancarkan wizard cetakan Windows Photo untuk kesemua imej kelompok sekaligus"""
+        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_labels} LABELS IN ONE WINDOW?", parent=popup_window):
+            laksanakan_windows_photo_wizard_tunggal(normalized_images)
 
     def trigger_batch_save():
         target_dir = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE BATCH IMAGES", parent=popup_window)
@@ -151,20 +152,24 @@ def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=Fals
             except Exception as e_save:
                 messagebox.showerror("STORAGE ERROR", str(e_save), parent=popup_window)
 
+    # ─── 1. BAR NAVIGASI ATAS (PREV & NEXT SEBIJIK KOD WARNA SLATE SLIDER) ───
     frame_navigation_bar = tk.Frame(popup_window, bg="#F8F9FA")
     frame_navigation_bar.pack(pady=5)
     
-    btn_prev = tk.Button(frame_navigation_bar, text="◀ PREVIOUS", command=slide_previous_page, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev = tk.Button(frame_navigation_bar, text="◀ PREV", command=slide_previous_page, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_prev.pack(side=tk.LEFT, padx=8)
     
-    btn_next = tk.Button(frame_navigation_bar, text="NEXT ▶", command=slide_next_page, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_next = tk.Button(frame_navigation_bar, text="NEXT ▶", command=slide_next_page, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_next.pack(side=tk.LEFT, padx=8)
 
+    # ─── 2. BARIS BUTANG KAWALAN UTAMA (EXACT MATCH WARNA & EMOJI 100% CUN) ───
     frame_action_footer = tk.Frame(popup_window, bg="#F8F9FA")
     frame_action_footer.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
-    tk.Button(frame_action_footer, text="🖨️ PRINT ALL", command=trigger_unified_batch_print, bg="#22C55E", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-    tk.Button(frame_action_footer, text="💾 SAVE ALL", command=trigger_batch_save, bg="#F59E0B", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-    tk.Button(frame_action_footer, text="❌ CLOSE", command=popup_window.destroy, bg="#374151", **BTN_STYLE).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+    # Penerapan kod hex warna tepat dari gambar rujukan: #2ECC71, #10B981, #E65100, #34495E
+    tk.Button(frame_action_footer, text="🖨️ PRINT CURRENT", command=trigger_single_print, bg="#2ECC71", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_action_footer, text="🖨️ PRINT ALL", command=trigger_unified_batch_print, bg="#10B981", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_action_footer, text="💾 SAVE ALL", command=trigger_batch_save, bg="#E65100", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_action_footer, text="❌ CLOSE", command=popup_window.destroy, bg="#34495E", **BTN_STYLE).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     refresh_wizard_viewport()

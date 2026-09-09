@@ -1,38 +1,50 @@
 import os
 import sys
 import sqlite3
+import time
+import shutil
 from tkinter import messagebox, filedialog
 from PIL import Image
 
+def convert_to_crisp_monochrome(pil_img):
+    """
+    Menukar imej kepada 1-bit monochrome (hitam putih tulen) dengan pecahan threshold yang tajam.
+    Ini membuang kesan kabur kelabu (anti-aliasing) pada sempadan tulisan dan petak kod QR.
+    """
+    try:
+        gray_img = pil_img.convert("L")
+        bw_img = gray_img.point(lambda x: 0 if x < 140 else 255, mode="1")
+        return bw_img
+    except Exception as e:
+        print(f"Monochrome normalization fallback triggered: {e}")
+        return pil_img.convert("1")
+
 def cetak_a4_master(target_data):
     """
-    🖨️ ENJIN CETAK SINGLE DEFAULT (KALIS ERROR TUPLE) 🖨️
-    Mengekstrak imej bersih daripada data tunggal atau pasangan tuple,
-    lalu dihantar terus ke tetingkap dialog grafik Windows.
+    PRINT ENGINE: SINGLE DEFAULT (600 DPI METADATA AUTO-SIZE INJECTED)
     """
     try:
         im = None
-        # 1. Jika data dihantar dalam bentuk tuple (img, paging) -> SEKARANG AKAN MASUK DI SINI
         if isinstance(target_data, tuple) and len(target_data) > 0:
-            im = target_data[0]
-        # 2. Jika data dihantar dalam bentuk list bertingkat yang mengandungi tuple
+            im = target_data
         elif isinstance(target_data, list) and len(target_data) > 0:
-            item = target_data[0]
-            im = item[0] if isinstance(item, tuple) else item
-        # 3. Jika data sudah sedia dalam bentuk PIL Image tulen
+            item = target_data
+            im = item if isinstance(item, tuple) else item
         else:
             im = target_data
             
         if im is None or not hasattr(im, "save"):
-            print("Ralat: Gagal mengekstrak objek imej murni untuk Single Print.")
+            print("Error: Failed to extract pure image object for Single Print.")
             return False
 
+        crisp_image = convert_to_crisp_monochrome(im)
         temp_file = "temp_print_invoice_default.png"
-        im.save(temp_file)
+        
+        # PENTING: Menyuntik info ketumpatan 600 DPI supaya Windows Print Driver membaca saiz auto-scale
+        crisp_image.save(temp_file, "PNG", dpi=(600, 600))
         
         if sys.platform == "win32":
             os.startfile(temp_file, "print")
-            messagebox.showinfo("SUCCESS", "MANAGE TO SEND TO PRINTER!")
             return True
         else:
             os.system(f"lp {temp_file}")
@@ -43,52 +55,61 @@ def cetak_a4_master(target_data):
         return False
 
 def cetak_a4_batch(senarai_imej_label):
+    """
+    PRINT ENGINE: MULTI-PAGE BATCH ISOLATION (600 DPI HARDWARE AUTO-SIZE SYNCHRONIZED)
+    """
     if not senarai_imej_label:
         messagebox.showwarning("NO DATA", "NO INVOICE LABELS TO PRINT.")
         return False
+        
     try:
-        senarai_bersih = []
-        for item in senarai_imej_label:
-            img_clean = item[0] if isinstance(item, tuple) else item
+        temp_dir = os.path.join(os.environ.get("TEMP", "C:\\Temp"), "OHTA_INVOICE_BATCH")
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        os.makedirs(temp_dir)
+            
+        for idx, item in enumerate(senarai_imej_label):
+            img_clean = item if isinstance(item, tuple) else item
             if isinstance(img_clean, Image.Image):
-                senarai_bersih.append(img_clean)
-        if not senarai_bersih:
-            messagebox.showerror("ERROR", "No valid PIL Images found in batch list.")
-            return False
-        img_induk = senarai_bersih[0]
-        mod_imej = img_induk.mode
-        lebar_standard = img_induk.width
-        jumlah_tinggi = sum(img.height for img in senarai_bersih)
-        master_img = Image.new(mod_imej, (lebar_standard, jumlah_tinggi), color="white")
-        y_offset = 0
-        for img in senarai_bersih:
-            if img.width != lebar_standard:
-                nisbah = lebar_standard / float(img.width)
-                tinggi_baru = int(float(img.height) * nisbah)
-                img = img.resize((lebar_standard, tinggi_baru), Image.Resampling.LANCZOS)
-            master_img.paste(img, (0, y_offset))
-            y_offset += img.height
-        temp_batch_file = "temp_print_invoice_batch.png"
-        master_img.save(temp_batch_file)
+                crisp_page = convert_to_crisp_monochrome(img_clean)
+                file_path = os.path.join(temp_dir, f"LABEL_PAGE_{idx+1:03d}.png")
+                
+                # Memaksa auto-scale 600 DPI pada setiap fail imej kumpulan
+                crisp_page.save(file_path, "PNG", dpi=(600, 600))
+
         if sys.platform == "win32":
-            os.startfile(temp_batch_file, "print")
+            import win32com.client
+            shell = win32com.client.Dispatch("Shell.Application")
+            folder = shell.NameSpace(temp_dir)
+            items = folder.Items()
+            items.InvokeVerbEx("print")
             return True
         else:
-            os.system(f"lp {temp_batch_file}")
+            for f in sorted(os.listdir(temp_dir)):
+                os.system(f"lp {os.path.join(temp_dir, f)}")
             return True
+            
     except Exception as e:
-        messagebox.showerror("BATCH PRINT ERROR", f"FAILED TO GENERATE BATCH PRINT:\n{str(e)}")
-        return False
+        try:
+            import win32api
+            for idx, item in enumerate(senarai_imej_label):
+                file_path = os.path.join(temp_dir, f"LABEL_PAGE_{idx+1:03d}.png")
+                win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                time.sleep(0.15)
+            return True
+        except:
+            messagebox.showerror("BATCH PRINT ERROR", f"FAILED TO GENERATE BATCH PRINT:\n{str(e)}")
+            return False
 
 def simpan_a4_master(img_label, invoice_no):
     try:
-        im = img_label[0] if isinstance(img_label, tuple) else img_label
+        im = img_label if isinstance(img_label, tuple) else img_label
         fail_clean = str(invoice_no).replace("/", "-").replace(":", "-").strip()
         path_fail = filedialog.asksaveasfilename(
             initialfile=f"INVOICE_LABEL_{fail_clean}.png", 
             defaultextension=".png", 
             filetypes=[("PNG Image", "*.png"), ("All Files", "*.*")],
-            title="SIMPAN GRAFIK PELEKAT"
+            title="SAVE LABEL GRAPHIC"
         )
         if path_fail:
             im.convert("RGB").save(path_fail, "PNG", quality=100)
@@ -105,7 +126,7 @@ def dapatkan_qty_outer(seq_no):
             cursor.execute("SELECT quantity FROM rekod_qr WHERE sequence_no = ?", (str(seq_no).strip(),))
             res = cursor.fetchone()
             if res:
-                clean_val = str(res[0]).upper().replace("PCS", "").strip()
+                clean_val = str(res).upper().replace("PCS", "").strip()
                 return int(float(clean_val))
             return 0
     except:

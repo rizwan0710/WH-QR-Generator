@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 def bina_input_header(parent, var_customer):
-    """Membina kawasan input Invoice No, SO No, dan Customer Auto Detect."""
+    """Builds the input fields for Invoice No, SO No, and Customer Auto Detect."""
     frame = tk.Frame(parent, bg="#F8F9FA")
     frame.pack(pady=5, padx=25, fill="x")
     
@@ -24,7 +24,7 @@ def bina_input_header(parent, var_customer):
     return ent_inv, ent_so
 
 def bina_selector_amount(parent, var_amount):
-    """Membina combobox bagi pemilihan jumlah kotak Outer Box."""
+    """Builds the combobox selector for Outer Box quantity."""
     frame = tk.Frame(parent, bg="#F8F9FA")
     frame.pack(pady=8)
     
@@ -34,7 +34,7 @@ def bina_selector_amount(parent, var_amount):
     return cb_amount
 
 def bina_input_scanner(parent):
-    """Membina kotak input putih khusus untuk menangkap laser laser scanner."""
+    """Builds a white input target entry specifically mapped for high-speed laser scanner input."""
     frame = tk.Frame(parent, bg="#F8F9FA")
     frame.pack(pady=8, padx=35, fill="x")
     

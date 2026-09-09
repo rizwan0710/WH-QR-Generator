@@ -1,15 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from PIL import ImageTk, Image
-import form_invoice_packing_logic as ipl  # Menggunakan rujukan fail logik invois utama abang
-import invoice_print_manager  # Menyambungkan enjin cantuman 1 tetingkap cetak berkelompok
+import form_invoice_packing_logic as ipl  
+import invoice_print_manager  
 import os
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     """
-    🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD & STANDARDIZED UI) 🌟
-    Jika 1 data: Keluar 3 butang bersih (PRINT, SAVE, CLOSE) tanpa navigasi.
-    Jika >1 data: Keluar 5 butang batch beserta butang selak PREVIOUS/NEXT.
+    🌟 ENGINE PREVIEW DINAMIK INVOICE (100% PERFECT VISUAL COLOR MATCH) 🌟
+    Applies the exact layout button styles and slider next/prev mechanics.
     """
     if not senarai_kad_tunggal:
         return
@@ -24,7 +23,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     senarai_kad_pembungkus_lokal = senarai_kad_tunggal
     total_label = len(senarai_kad_pembungkus_lokal)
 
-    lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#EA580C", bg="#F8F9FA")
+    lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#10B981", bg="#F8F9FA")
     lbl_header.pack(pady=12)
 
     frame_canvas_bg = tk.Frame(tingkap_popup, bg="white", bd=1, relief="groove")
@@ -60,75 +59,56 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
             indeks_halaman += 1
             kemaskini_paparan_selak()
 
+    def cetak_halaman_tunggal():
+        """🖨️ PRINT CURRENT PAGE"""
+        item_aktif = senarai_kad_pembungkus_lokal[indeks_halaman]
+        img_clean = item_aktif if isinstance(item_aktif, tuple) else item_aktif
+        invoice_print_manager.cetak_a4_master(img_clean)
+
     def cetak_semua_pukal():
-        """🔥 ENJIN BATCH PRINT INVOICE: Menggabungkan semua stiker ke dalam 1 pop-up tingkap printer Windows 🔥"""
-        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} THIS LABEL IN ONE WINDOW?", parent=tingkap_popup):
-            # Ekstrak senarai imej bersih (PIL Image) sahaja daripada gandingan tuple
-            imej_bersih_list = [img for img, _ in senarai_kad_pembungkus_lokal]
-            
-            # Panggil enjin cantuman menegak bersatu dari print manager
-            berjaya = invoice_print_manager.cetak_a4_batch(imej_bersih_list)
-            if berjaya:
-                messagebox.showinfo("SUCCESS", f"ALL {total_label} LABEL MANAGE TO SEND TO ONE PRINT WINDOW!", parent=tingkap_popup)
+        """🖨️ PRINT ALL PAGES BATCH"""
+        if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} LABELS?", parent=tingkap_popup):
+            imej_bersih_list = [item if isinstance(item, tuple) else item for item in senarai_kad_pembungkus_lokal]
+            invoice_print_manager.cetak_a4_batch(imej_bersih_list)
 
     def simpan_semua_pukal():
-        folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL", parent=tingkap_popup)
+        """💾 SAVE ALL IMAGES"""
+        folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL IMAGES", parent=tingkap_popup)
         if folder_tujuan:
-            for img_kad, box_paging in senarai_kad_pembungkus_lokal:
+            for img_item, box_paging in senarai_kad_pembungkus_lokal:
+                img_clean = img_item if isinstance(img_item, tuple) else img_item
                 paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
-                img_kad.save(os.path.join(folder_tujuan, f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png"), "PNG")
-            messagebox.showinfo("COMPLETE", f"ALL {total_label} LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
+                img_clean.save(os.path.join(folder_tujuan, f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png"), "PNG")
+            messagebox.showinfo("COMPLETE", f"ALL {total_label} LABELS SUCCESSFULLY SAVED!", parent=tingkap_popup)
 
-    def simpan_tunggal_sahaja():
-        img_kad, box_paging = senarai_kad_pembungkus_lokal[indeks_halaman]
-        paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
-        path_fail = filedialog.asksaveasfilename(
-            initialfile=f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png", 
-            defaultextension=".png", 
-            filetypes=[("PNG Image", "*.png")],
-            title="SIMPAN GRAFIK LABEL"
-        )
-        if path_fail:
-            img_kad.save(path_fail, "PNG")
-            messagebox.showinfo("COMPLETE", "LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
-
-    # ─── 1. BAR NAVIGASI SELAK HALAMAN STANDARDIZED (Hanya pack jika data > 1) ───
+    # ─── 1. PAGE SCROLL NAVIGATION BAR ───
     frame_nav = tk.Frame(tingkap_popup, bg="#F8F9FA")
-    btn_prev = tk.Button(frame_nav, text="◀ PREVIOUS", command=halaman_ke_kiri, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev = tk.Button(frame_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_prev.pack(side=tk.LEFT, padx=8)
-    btn_next = tk.Button(frame_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_next = tk.Button(frame_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_next.pack(side=tk.LEFT, padx=8)
 
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. BARIS BUTANG KAWALAN FLAT STYLE SERAGAM (DINAMIK & KALIS TUPLE ERROR) ───
+    # ─── 2. STANDARDIZED FLAT ACTION BUTTON FOOTER ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
-    if total_label == 1:
-        # 🌟 FIXED INDEX TUNGGAL: Mengambil elemen imej bersih daripada tuple untuk kes 1 stiker tunggal
-        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus_lokal), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
-    else:
-        # 🌟 FIXED INDEX CURRENT: Mengambil elemen imej bersih pada indeks halaman yang aktif untuk cetakan batch
-        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus_lokal[indeks_halaman]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="🔥 PRINT ALL (1 WINDOW)", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="💾 SAVE CURRENT", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="📦 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
+    tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=cetak_halaman_tunggal, bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_btn, text="🖨️ PRINT ALL", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+    tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()
 
-# ─── SECTION ALIAS PROJEK (SINKRONISASI CENTRAL DATABASE PANEL) ───
 def buka_popup_pukal_invoice_1by1(jadual, parent_window=None):
     """
-    🌟 ALIAS LINKING ENGINE: Menyambungkan panggilan database_manager.py baris 64 🌟
-    Membaca baris terpilih dari Treeview Central Database, membina tuple data imej PIL murni, 
-    dan melancarkan jendela pratinjau utama secara selamat tanpa ralat AttributeError.
+    🌟 ALIAS LINKING ENGINE MUKTAMAD 🌟
+    Interceptors for existing database log table rows. Generates the new QR payload layout 
+    sequence mapping dynamically when viewing single/multiple logs from Central Database view.
     """
     item_terpilih = jadual.selection()
     if not item_terpilih:
@@ -138,33 +118,50 @@ def buka_popup_pukal_invoice_1by1(jadual, parent_window=None):
     if not nilai_baris:
         return
         
-    # Ekstrak parameter mengikut struktur rekod_qr database abang
-    # cols = (id, tarikh, customer, drawing_no, part_no, quantity, machine, lotcard_no, sequence_no)
     try:
-        id_db, tarikh, cust, dwg, part, qty, machine, lot, seq = nilai_baris
-    except ValueError:
-        # Jika kolum berbeza, gunakan perlindungan fallback data
+        # Array positioning maps: index matching row outputs
+        id_db = nilai_baris[1]
+        customer_name = nilai_baris[3]
+        invoice_no = nilai_baris[4]
+        so_no = nilai_baris[5]
+        clean_qty = nilai_baris[6]
+        text_paging = nilai_baris[7]
+        outer_box_siri = nilai_baris[8]
+        seq_invoice = nilai_baris[10]
+    except Exception as e_parse:
+        print(f"Error parsing treeview column index: {e_parse}")
         return
+        
+    # Standardizing structured string formatting sequences matching user criteria
+    qr_payload = (
+        f"SN: {str(seq_invoice).strip()}\n"
+        f"Invoice No: {str(invoice_no).strip()}\n"
+        f"SO No: {str(so_no).strip()}\n"
+        f"Customer: {str(customer_name).strip()}\n"
+        f"Qty: {str(clean_qty).strip()}"
+    )
         
     import qrcode
     qr = qrcode.QRCode(version=1, border=1)
-    qr.add_data(str(seq).strip())
+    qr.add_data(qr_payload)
     qr.make(fit=True)
-    im_qr = qr.make_image()
+    im_qr = qr.make_image().convert("RGB")
     
     import label_invoice_designer as lid
     img_stiker = lid.bina_imej_invoice(
         img_qr=im_qr,
-        invoice_no=str(dwg).replace("INV:", "").strip(),
-        so_no=str(part).replace("SO:", "").strip(),
-        outer_seq=str(machine).strip(),
-        outer_qty=str(qty).strip(),
-        seq_inv_spesifik=str(seq).strip(),
-        text_paging=str(lot).strip(),
-        customer=str(cust).strip()
+        inv_no=invoice_no,
+        so_no=so_no,
+        outer_seq=outer_box_siri,
+        qty=clean_qty,
+        seq_inv=seq_invoice,
+        paging=text_paging
     )
     
-    if img_stiker:
-        # Formatkan semula data ke dalam rantaian list tuple [(Image, Text)] sepadan enjin preview
-        gandingan_kad = [(img_stiker, str(lot).strip())]
-        buka_popup_individual_1by1(parent_window if parent_window else jadual.winfo_toplevel(), gandingan_kad, str(dwg).replace("INV:", "").strip())
+    # Pack array structure to dynamic list parameters
+    import central_tab_invoice_wizard
+    central_tab_invoice_wizard.buka_popup_individual_1by1(
+        parent_window, 
+        [(img_stiker, text_paging)], 
+        inv_no=invoice_no
+    )

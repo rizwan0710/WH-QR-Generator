@@ -91,11 +91,21 @@ def papar_pratonton_invoice_terpilih(jadual, win):
             outer_seq = str(r[8])
             seq_inv   = str(r[10]) # Invoice Sequence No (e.g. INV26xxxx)
 
-            # 1. Bina semula Kod QR secara on-the-fly berdasarkan data Sequence No asal
+            # 🌟 FORMAT DATA QR BARU (MUTTAMAD & BERSTRUKTUR)
+            # Menghasilkan payload berbaris mengikut spesifikasi yang dikehendaki
+            qr_payload = (
+                f"SN: {seq_inv.strip()}\n"
+                f"Invoice No: {inv_no.strip()}\n"
+                f"SO No: {so_no.strip()}\n"
+                f"Customer: {cust_name.strip()}\n"
+                f"Qty: {qty_str.strip()}"
+            )
+
+            # 1. Bina semula Kod QR secara on-the-fly berdasarkan payload terstruktur baharu
             qr = qrcode.QRCode(version=1, border=1)
-            qr.add_data(seq_inv)
+            qr.add_data(qr_payload)
             qr.make(fit=True)
-            im_qr = qr.make_image()
+            im_qr = qr.make_image().convert("RGB")
 
             # 2. Hasilkan semula imej stiker grafik melalui modul label designer
             stk_img = lid.bina_imej_invoice(
@@ -114,7 +124,7 @@ def papar_pratonton_invoice_terpilih(jadual, win):
                 senarai_kad_stiker.append((stk_img, page_stat))
 
         if senarai_kad_stiker:
-            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan
+            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan (Menggunakan versi 3 & 4 butang terstandarisasi)
             invoice_preview_window.buka_popup_individual_1by1(win, senarai_kad_stiker, inv_no_induk)
         else:
             messagebox.showerror("RENDER ERROR", "FAILED TO GENERATE GRAPHICAL IMAGE LABELS FOR PREVIEW.")
