@@ -1,3 +1,4 @@
+# custom_dropdown.py - KOD PENUH BERSIH
 import tkinter as tk
 import sqlite3
 
@@ -33,7 +34,6 @@ def papar_senarai_toplevel(widget_entry, win_induk, senarai_untuk_dipapar):
     tingkap_cadangan_global.configure(bg="#CBD5E1")
     tingkap_cadangan_global.wm_attributes("-topmost", True)
     
-    # 🌟 KOREKSI 1 FOCUS-OUT: Hanya tutup dropdown jika fokus beralih ke tetingkap yang bukan milik dropdown 🌟
     def semak_fokus_keluar(event):
         win_induk.after(10, lakukan_semakan_fokus)
 
@@ -41,7 +41,6 @@ def papar_senarai_toplevel(widget_entry, win_induk, senarai_untuk_dipapar):
         global tingkap_cadangan_global
         if tingkap_cadangan_global and tingkap_cadangan_global.winfo_exists():
             fokus_sekarang = win_induk.focus_get()
-            # Jika fokus sekarang bukan pada entry dan bukan pada listbox cadangan, tutup dropdown
             if fokus_sekarang != widget_entry and fokus_sekarang != listbox:
                 tutup_dropdown()
 
@@ -51,14 +50,13 @@ def papar_senarai_toplevel(widget_entry, win_induk, senarai_untuk_dipapar):
     y = widget_entry.winfo_rooty() + widget_entry.winfo_height()
     lebar = widget_entry.winfo_width()
     
-    tingkap_cadangan_global.geometry(f"{lebar}x75+{x}+{y}")
+    tingkap_cadangan_global.geometry(f"{lebar}x120+{x}+{y}") # Ketinggian dinaikkan ke 120 untuk paparan selesa
     
     frame_list = tk.Frame(tingkap_cadangan_global, bg="white")
     frame_list.pack(fill=tk.BOTH, expand=True)
     
     scrollbar = tk.Scrollbar(frame_list, orient=tk.VERTICAL)
     
-    # Tukar takefocus=True supaya listbox boleh memegang fokus sementara pilihan mouse dibaca
     listbox = tk.Listbox(
         frame_list, font=("Segoe UI", 10), bd=1, relief="flat", 
         bg="white", fg="black", selectbackground="#0D6EFD", 
@@ -70,62 +68,56 @@ def papar_senarai_toplevel(widget_entry, win_induk, senarai_untuk_dipapar):
     listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     
     for nama in senarai_untuk_dipapar:
-        listbox.insert(tk.END, nama)
+        listbox.insert(tk.END, str(nama).strip())
         
-    # 🌟 KOREKSI 2 EVENT CLICK: Menggunakan standard <<ListboxSelect>> murni Tkinter 🌟
     def on_select(event):
         try:
             indeks_pilihan = listbox.curselection()
             if indeks_pilihan:
+                # 🛠️ KOREKSI KUNCI MUTLAK: Wajib letak [0] untuk ambil nilai teks bersih yang diklik, bukannya kelompok tuple baris!
                 pilihan = listbox.get(indeks_pilihan[0])
                 widget_entry.delete(0, tk.END)
-                widget_entry.insert(0, pilihan)
+                widget_entry.insert(0, str(pilihan).strip())
                 tutup_dropdown()
                 widget_entry.focus_set()
         except Exception as err:
             print(f"Ralat pemilihan dropdown: {str(err)}")
             
     listbox.bind("<<ListboxSelect>>", on_select)
-    
-    # Sokongan pemilihan papan kekunci (Keyboard Enter key)
     listbox.bind("<Return>", on_select)
     
-    # Kembalikan fokus input utama ke kotak entry dalam milisaat hantu Windows
     win_induk.after(1, lambda: widget_entry.focus_set())
 
-def penapis_auto_suggest_safe(event, widget_entry, win_induk, senarai_asal=None):
-    """🌟 MODE 1: MENAIP AUTOMATIK SUGGESTION (DENGAN RE-FETCH DATABASES) 🌟"""
-    global tingkap_cadangan_global
-    
-    if event.keysym in ["Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R"]:
-        return
-
-    teks_ditaip = widget_entry.get().upper()
-    if teks_ditaip.strip() == "":
-        tutup_dropdown()
-        return
-
-    senarai_segar = ambil_senarai_customer_dari_db()
-    senarai_ditapis = [nama for nama in senarai_segar if teks_ditaip in nama]
-    
-    if senarai_ditapis:
-        papar_senarai_toplevel(widget_entry, win_induk, senarai_ditapis)
-    else:
-        tutup_dropdown()
-
 def aksi_butang_dropdown_pukal(widget_entry, win_induk, senarai_asal=None):
-    """🌟 MODE 2: SKROL PENUH MANUAL VIA BUTTON ▼ (DENGAN RE-FETCH DATABASES) 🌟"""
     global tingkap_cadangan_global
     if tingkap_cadangan_global and tingkap_cadangan_global.winfo_exists():
         tutup_dropdown()
         return
-        
-    senarai_segar = ambil_senarai_customer_dari_db()
-    papar_senarai_toplevel(widget_entry, win_induk, senarai_segar)
+    papar_senarai_toplevel(widget_entry, win_induk, senarai_asal)
 
 def tutup_dropdown():
-    """Fungsi pembantu untuk menutup pop-up dari luar secara selamat"""
     global tingkap_cadangan_global
     if tingkap_cadangan_global and tingkap_cadangan_global.winfo_exists():
         tingkap_cadangan_global.destroy()
         tingkap_cadangan_global = None
+
+# 🛠️ 3 FUNGSI UTAMA PENAPIS BERSANDAR SEBARIS (MENGGUNAKAN INDEKS MATRIKS DENGAN BETUL)
+def ambil_senarai_customer_master():
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            return sorted(list(set([str(r[0]).upper().strip() for r in conn.cursor().execute("SELECT DISTINCT customer_name FROM master_produk WHERE customer_name IS NOT NULL AND customer_name != ''").fetchall() if r and r[0]])))
+    except: return []
+
+def ambil_drawing_terikat(cust):
+    if not cust: return []
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            return sorted(list(set([str(r[0]).upper().strip() for r in conn.cursor().execute("SELECT DISTINCT drawing_no FROM master_produk WHERE customer_name = ?", (cust.upper().strip(),)).fetchall() if r and r[0]])))
+    except: return []
+
+def ambil_part_terikat(cust, draw):
+    if not cust or not draw: return []
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            return sorted(list(set([str(r[0]).upper().strip() for r in conn.cursor().execute("SELECT DISTINCT part_number FROM master_produk WHERE customer_name = ? AND drawing_no = ?", (cust.upper().strip(), draw.upper().strip())).fetchall() if r and r[0]])))
+    except: return []

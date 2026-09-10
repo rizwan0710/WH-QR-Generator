@@ -52,7 +52,10 @@ def carian_outer(jadual, entry_search):
             if not teks:
                 cursor.execute(base + " ORDER BY id DESC")
             else:
-                cursor.execute(base + " AND (sequence_no LIKE ? OR customer LIKE ?) ORDER BY id DESC", (f"%{teks}%", f"%{teks}%"))
+                # 🛠️ PENAMBAHBAIKAN: Menambah tapisan 'machine LIKE ?' untuk membolehkan carian siri Inner Sequence (WP...)
+                query_penapis = base + " AND (sequence_no LIKE ? OR customer LIKE ? OR machine LIKE ?) ORDER BY id DESC"
+                cursor.execute(query_penapis, (f"%{teks}%", f"%{teks}%", f"%{teks}%"))
+                
             for r in cursor.fetchall():
                 jadual.insert("", tk.END, values=("☐", r[0], r[2], str(r[6]).upper(), f"{str(r[3]).replace('PCS','').strip()} PCS", str(r[5]), str(r[4]).replace(",","\n"), "OUTER BOX", r[1]), tags=('normal',))
     except Exception as e: messagebox.showerror("ERROR", str(e))
@@ -104,7 +107,6 @@ def papar_pratonton_outer_terpilih(jadual, win):
     if imgs: database_batch_preview.buka_popup_database_pukal_seragam(win, imgs, is_outer=True)
 
 def eksport_outer_excel():
-    """🌟 FUNGSI EKSPORT YANG HILANG DAH DITAMBAH BALIK 🌟"""
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()

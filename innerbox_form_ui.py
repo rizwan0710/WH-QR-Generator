@@ -1,19 +1,71 @@
+# innerbox_form_ui.py - BAHAGIAN 1 (ATAS)
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 import form_warehouse as backend
 import custom_dropdown as cd  
+import sqlite3
+import os
+
+try:
+    import openpyxl
+except ImportError:
+    pass
 
 def alih_fokus(event, input_seterusnya):
-    """Shifts field focus directly to the next input field upon Enter key interaction."""
     input_seterusnya.focus_set()
     return "break"  
 
+def laksanakan_import_excel_langsung(win_induk):
+    path_fail = filedialog.askopenfilename(
+        title="Pilih Fail Master LIST CUSTOMER",
+        filetypes=[("Excel Files", "*.xlsx *.xls"), ("All Files", "*.*")],
+        parent=win_induk
+    )
+    if not path_fail:
+        return
+        
+    conn = sqlite3.connect("warehouse_data.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS master_produk (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_name TEXT,
+            drawing_no TEXT,
+            part_number TEXT
+        )
+    """)
+    cursor.execute("DELETE FROM master_produk")
+    
+    query = "INSERT INTO master_produk (customer_name, drawing_no, part_number) VALUES (?, ?, ?)"
+    try:
+        wb = openpyxl.load_workbook(path_fail, data_only=True)
+        sheet = wb.active
+        kira = 0
+        
+        # 🛠️ AMBIL LAJUR B(1), C(2), D(3) SECARA ASLI (BUKAN STR(ROW) SATU BARIS)
+        for row in sheet.iter_rows(min_row=2, max_col=4, values_only=True):
+            if row and len(row) >= 4:
+                cust_val = str(row[1]).strip().upper() if row[1] is not None else ""
+                draw_val = str(row[2]).strip().upper() if row[2] is not None else ""
+                part_val = str(row[3]).strip().upper() if row[3] is not None else ""
+                
+                if cust_val and cust_val != "NONE" and cust_val != "":
+                    cursor.execute(query, (cust_val, draw_val, part_val))
+                    kira += 1
+                    
+        conn.commit()
+        messagebox.showinfo("SUCCESS", f"Berjaya memuat naik {kira} rekod data produk dari Excel!", parent=win_induk)
+    except Exception as e:
+        conn.rollback()
+        messagebox.showerror("IMPORT ERROR", f"Gagal membaca fail Excel:\n{str(e)}", parent=win_induk)
+    finally:
+        conn.close()
+        # innerbox_form_ui.py - BAHAGIAN 2 (TENGAH)
 def buka_borang_warehouse(root):
-    """🌟 STANDARDIZED INNERBOX FORM UI (ENGLISH UPGRADE) 🌟"""
     win_inner = tk.Toplevel(root)
     win_inner.title("FORM 1: INNER BOX PRODUCTION ENTRY")
-    win_inner.geometry("540x640+450+50") 
+    win_inner.geometry("540x660+450+30") 
     win_inner.configure(bg="#F8F9FA")
     win_inner.resizable(False, False)
     win_inner.grab_set()
@@ -38,41 +90,45 @@ def buka_borang_warehouse(root):
     kamus_input["date"] = DateEntry(frame_row1, width=30, font=("Segoe UI", 10), background="#0D6EFD", foreground="white", borderwidth=1, date_pattern="dd/mm/yyyy")
     kamus_input["date"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
     
+    def clear_isian_bawah():
+        kamus_input["drawing"].delete(0, tk.END)
+        kamus_input["part"].delete(0, tk.END)
+
     # Field 2: Customer Name
     frame_row2 = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row2.pack(fill=tk.X, pady=4)
     tk.Label(frame_row2, text="Customer Name :", **lbl_style).pack(side=tk.LEFT)
-    
     frame_combobox_mix = tk.Frame(frame_row2, bg="#F8F9FA")
     frame_combobox_mix.pack(side=tk.LEFT, fill=tk.X, expand=True)
-    
     kamus_input["customer"] = tk.Entry(frame_combobox_mix, font=("Segoe UI", 10), relief="groove", bd=1)
     kamus_input["customer"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
     
-    senarai_pilihan = cd.ambil_senarai_customer_dari_db()
-    
-    btn_arrow = tk.Button(
-        frame_combobox_mix, text="▼", font=("Segoe UI", 7), bg="#E2E8F0", fg="#475569", 
-        relief="groove", bd=1, width=3, activebackground="#CBD5E1", cursor="hand2", takefocus=False,
-        command=lambda: cd.aksi_butang_dropdown_pukal(kamus_input["customer"], win_inner, senarai_pilihan)
-    )
-    btn_arrow.pack(side=tk.RIGHT, fill=tk.Y)
-    
-    kamus_input["customer"].bind('<KeyRelease>', lambda event: cd.penapis_auto_suggest_safe(event, kamus_input["customer"], win_inner, senarai_pilihan))
+    tk.Button(frame_combobox_mix, text="▼", font=("Segoe UI", 7), bg="#E2E8F0", fg="#475569", relief="groove", bd=1, width=3, takefocus=False,
+              command=lambda: [clear_isian_bawah(), cd.papar_senarai_toplevel(kamus_input["customer"], win_inner, cd.ambil_senarai_customer_master())]).pack(side=tk.RIGHT, fill=tk.Y)
     
     # Field 3: Drawing No
     frame_row3 = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row3.pack(fill=tk.X, pady=4)
     tk.Label(frame_row3, text="Drawing No :", **lbl_style).pack(side=tk.LEFT)
-    kamus_input["drawing"] = tk.Entry(frame_row3, **ent_style)
-    kamus_input["drawing"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
+    frame_draw_mix = tk.Frame(frame_row3, bg="#F8F9FA")
+    frame_draw_mix.pack(side=tk.LEFT, fill=tk.X, expand=True)
+    kamus_input["drawing"] = tk.Entry(frame_draw_mix, font=("Segoe UI", 10), relief="groove", bd=1)
+    kamus_input["drawing"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
     
+    tk.Button(frame_draw_mix, text="▼", font=("Segoe UI", 7), bg="#E2E8F0", fg="#475569", relief="groove", bd=1, width=3, takefocus=False,
+              command=lambda: [kamus_input["part"].delete(0, tk.END), cd.papar_senarai_toplevel(kamus_input["drawing"], win_inner, cd.ambil_drawing_terikat(kamus_input["customer"].get()))]).pack(side=tk.RIGHT, fill=tk.Y)
+
     # Field 4: Part Number
     frame_row4 = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row4.pack(fill=tk.X, pady=4)
     tk.Label(frame_row4, text="Part Number :", **lbl_style).pack(side=tk.LEFT)
-    kamus_input["part"] = tk.Entry(frame_row4, **ent_style)
-    kamus_input["part"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
+    frame_part_mix = tk.Frame(frame_row4, bg="#F8F9FA")
+    frame_part_mix.pack(side=tk.LEFT, fill=tk.X, expand=True)
+    kamus_input["part"] = tk.Entry(frame_part_mix, font=("Segoe UI", 10), relief="groove", bd=1)
+    kamus_input["part"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
+    
+    tk.Button(frame_part_mix, text="▼", font=("Segoe UI", 7), bg="#E2E8F0", fg="#475569", relief="groove", bd=1, width=3, takefocus=False,
+              command=lambda: cd.papar_senarai_toplevel(kamus_input["part"], win_inner, cd.ambil_part_terikat(kamus_input["customer"].get(), kamus_input["drawing"].get()))).pack(side=tk.RIGHT, fill=tk.Y)
     
     # Field 5: Total Quantity
     frame_row5 = tk.Frame(frame_data_entry, bg="#F8F9FA")
@@ -108,7 +164,7 @@ def buka_borang_warehouse(root):
     tk.Label(frame_row8, text="Lot Number :", **lbl_style).pack(side=tk.LEFT)
     kamus_input["lot"] = tk.Entry(frame_row8, **ent_style)
     kamus_input["lot"].pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
-    
+# innerbox_form_ui.py - BAHAGIAN 3 (BAWAH)
     # Scanner Return Key Binds
     kamus_input["customer"].bind('<Return>', lambda event: alih_fokus(event, kamus_input["drawing"]))
     kamus_input["drawing"].bind('<Return>', lambda event: alih_fokus(event, kamus_input["part"]))
@@ -123,15 +179,17 @@ def buka_borang_warehouse(root):
             kamus_input[k].delete(0, tk.END)
         kamus_input["customer"].focus_set()
 
-    # Standardized operational keys with matching colors
     tk.Button(win_inner, text="SUBMIT & GENERATE BATCH INNER QR", command=lambda: backend.proses_submit_data_pukal(win_inner, kamus_input), bg="#198754", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=30, pady=(0, 4))
     
     frame_action_bar = tk.Frame(win_inner, bg="#F8F9FA")
     frame_action_bar.pack(fill="x", padx=30, pady=(0, 20))
     frame_action_bar.columnconfigure(0, weight=1)
     frame_action_bar.columnconfigure(1, weight=1)
+    frame_action_bar.columnconfigure(2, weight=1)
     
-    tk.Button(frame_action_bar, text="🔄 RESET", command=cuci_isian, bg="#FD7E14", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 3), sticky="ew")
-    tk.Button(frame_action_bar, text="◀ BACK", command=win_inner.destroy, bg="#34495E", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=1, padx=(3, 0), sticky="ew")
+    tk.Button(frame_action_bar, text="📥 IMPORT EXCEL", command=lambda: laksanakan_import_excel_langsung(win_inner), bg="#0D6EFD", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 2), sticky="ew")
+    tk.Button(frame_action_bar, text="🔄 RESET", command=cuci_isian, bg="#FD7E14", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=1, padx=2, sticky="ew")
+    tk.Button(frame_action_bar, text="◀ BACK", command=win_inner.destroy, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=2, padx=(2, 0), sticky="ew")
 
     kamus_input["customer"].focus_set()
+ 
