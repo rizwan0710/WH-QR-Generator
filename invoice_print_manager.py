@@ -1,3 +1,4 @@
+# invoice_print_manager.py - KOD PENUH BERSIH & FIXED IMAGE EXTRACTION (600 DPI METADATA)
 import os
 import sys
 import sqlite3
@@ -25,11 +26,12 @@ def cetak_a4_master(target_data):
     """
     try:
         im = None
+        # 🛠️ FIX MUTTAMAD: Wajib ada indeks [0] untuk mengekstrak objek Imej tulen daripada data Tuple!
         if isinstance(target_data, tuple) and len(target_data) > 0:
-            im = target_data
+            im = target_data[0]
         elif isinstance(target_data, list) and len(target_data) > 0:
-            item = target_data
-            im = item if isinstance(item, tuple) else item
+            item = target_data[0]
+            im = item[0] if isinstance(item, tuple) else item
         else:
             im = target_data
             
@@ -69,7 +71,8 @@ def cetak_a4_batch(senarai_imej_label):
         os.makedirs(temp_dir)
             
         for idx, item in enumerate(senarai_imej_label):
-            img_clean = item if isinstance(item, tuple) else item
+            # 🛠️ FIX MUTTAMAD: Wajib ambil indeks [0] di sini juga supaya gelung tidak hantar data tuple ke pencetak
+            img_clean = item[0] if isinstance(item, tuple) else item
             if isinstance(img_clean, Image.Image):
                 crisp_page = convert_to_crisp_monochrome(img_clean)
                 file_path = os.path.join(temp_dir, f"LABEL_PAGE_{idx+1:03d}.png")
@@ -103,7 +106,7 @@ def cetak_a4_batch(senarai_imej_label):
 
 def simpan_a4_master(img_label, invoice_no):
     try:
-        im = img_label if isinstance(img_label, tuple) else img_label
+        im = img_label[0] if isinstance(img_label, tuple) else img_label
         fail_clean = str(invoice_no).replace("/", "-").replace(":", "-").strip()
         path_fail = filedialog.asksaveasfilename(
             initialfile=f"INVOICE_LABEL_{fail_clean}.png", 
@@ -126,7 +129,7 @@ def dapatkan_qty_outer(seq_no):
             cursor.execute("SELECT quantity FROM rekod_qr WHERE sequence_no = ?", (str(seq_no).strip(),))
             res = cursor.fetchone()
             if res:
-                clean_val = str(res).upper().replace("PCS", "").strip()
+                clean_val = str(res[0]).upper().replace("PCS", "").strip()
                 return int(float(clean_val))
             return 0
     except:

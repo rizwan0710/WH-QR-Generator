@@ -1,3 +1,4 @@
+# invoice_tab_logic.py - FULL CLEAN INTEGRATED CODE (NO PACKING DISPLAY IN QR FOR EXISTING DATA)
 import sqlite3
 import csv
 import qrcode
@@ -63,7 +64,7 @@ def carian_invoice(jadual, entry_search):
         messagebox.showerror("DATA ERROR", f"FAILED TO PREVIEW INVOICE INFORMATION :\n{str(e)}")
 
 def papar_pratonton_invoice_terpilih(jadual, win):
-    """🌟 BUTANG PREVIEW DATABASE DI TAB INVOICE FIXED 🌟"""
+    """🌟 BUTANG PREVIEW DATABASE DI TAB INVOICE FIXED (WITH UNIVERSAL QR PAYLOAD - NO PACKING) 🌟"""
     item_terpilih = []
     
     # Imbas semua baris dalam Treeview untuk mencari yang telah di-tanda (☑)
@@ -75,6 +76,15 @@ def papar_pratonton_invoice_terpilih(jadual, win):
     if not item_terpilih:
         messagebox.showwarning("NO SELECTION", "PLEASE TICK (☑) AT LEAST ONE INVOICE RECORD TO PREVIEW!")
         return
+
+    # HARD LOCK: Semak duplikasi "Linked Outer Box" (Indeks 8 dalam Treeview)
+    senarai_outer_box = [str(r[8]).strip().upper() for r in item_terpilih if str(r[8]).strip() and str(r[8]).strip().upper() != "NONE"]
+    if len(set(senarai_outer_box)) != len(senarai_outer_box):
+        return messagebox.showerror(
+            "🚨 SAME BOX SCAN ERROR",
+            "PREVIEW REJECTED!\n\nYou have selected records that share the SAME Linked Outer Box Sequence Number!",
+            parent=win
+        )
 
     # Ambil Invoice No daripada item pertama untuk tajuk tetingkap popup
     inv_no_induk = item_terpilih[0][4]
@@ -91,17 +101,16 @@ def papar_pratonton_invoice_terpilih(jadual, win):
             outer_seq = str(r[8])
             seq_inv   = str(r[10]) # Invoice Sequence No (e.g. INV26xxxx)
 
-            # 🌟 FORMAT DATA QR BARU (MUTTAMAD & BERSTRUKTUR)
-            # Menghasilkan payload berbaris mengikut spesifikasi yang dikehendaki
+            # 🌟 KINI DIUBAH KEPADA PAYLOAD UNIVERSAL TERPIAWAI BAGI REKOD SEDIA ADA (TANPA PACKING DISPLAY) 🌟
             qr_payload = (
-                f"SN: {seq_inv.strip()}\n"
-                f"Invoice No: {inv_no.strip()}\n"
-                f"SO No: {so_no.strip()}\n"
-                f"Customer: {cust_name.strip()}\n"
-                f"Qty: {qty_str.strip()}"
+                f"SERIAL NO  : {seq_inv.strip()}\n"
+                f"INVOICE NO : {inv_no.strip()}\n"
+                f"SO No      : {so_no.strip()}\n"
+                f"CUSTOMER   : {cust_name.strip()}\n"
+                f"QUANTITY   : {qty_str.strip()}"
             )
 
-            # 1. Bina semula Kod QR secara on-the-fly berdasarkan payload terstruktur baharu
+            # 1. Bina semula Kod QR Universal secara on-the-fly untuk data lama
             qr = qrcode.QRCode(version=1, border=1)
             qr.add_data(qr_payload)
             qr.make(fit=True)
@@ -124,13 +133,13 @@ def papar_pratonton_invoice_terpilih(jadual, win):
                 senarai_kad_stiker.append((stk_img, page_stat))
 
         if senarai_kad_stiker:
-            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan (Menggunakan versi 3 & 4 butang terstandarisasi)
+            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan
             invoice_preview_window.buka_popup_individual_1by1(win, senarai_kad_stiker, inv_no_induk)
         else:
-            messagebox.showerror("RENDER ERROR", "FAILED TO GENERATE GRAPHICAL IMAGE LABELS FOR PREVIEW.")
+            messagebox.showerror("RENDER ERROR", "FAILED TO GENERATE GRAPHICAL IMAGE LABELS FOR PREVIEW.", parent=win)
 
     except Exception as e:
-        messagebox.showerror("PREVIEW EXCEPTION", f"SYSTEM ERROR DURING RENDERING:\n{str(e)}")
+        messagebox.showerror("PREVIEW EXCEPTION", f"SYSTEM ERROR DURING RENDERING:\n{str(e)}", parent=win)
 
 def on_invoice_click(event, jadual):
     item_id = jadual.identify_row(event.y)
@@ -180,9 +189,8 @@ def eksport_invoice_excel():
         if path_excel:
             with open(path_excel, mode='w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow(["ID", "Invoice Sequence No", "Date", "Invoice No", "SO No", "Quantity (Pcs)", "Linked Outer Box", "Customer"])
-                for r in semua_data:
-                    writer.writerow([r[0], r[1], r[2], str(r[3]).replace("INV:","").strip(), str(r[4]).replace("SO:","").strip(), r[5], r[6], r[7]])
-            messagebox.showinfo("SUCCESS", "Invoice Packing Report successfully saved!")
+                writer.writerow(["ID", "Invoice Sequence No", "Date", "Invoice No", "SO No", "Quantity", "Linked Outer Box", "Customer"])
+                writer.writerows(semua_data)
+            messagebox.showinfo("SUCCESS", "Invoice packing export report saved successfully!")
     except Exception as e:
-        messagebox.showerror("Ralat Sistem", str(e))
+        messagebox.showerror("EXPORT ERROR", str(e))

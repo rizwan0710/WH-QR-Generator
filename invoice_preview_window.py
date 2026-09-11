@@ -1,18 +1,30 @@
+# invoice_preview_window.py - PART 1: ABSOLUTE INDEX EXTRACTOR (FIXED FOR TUPLE)
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from PIL import ImageTk, Image
-import invoice_print_manager  # Triggers the batch and single print engines cleanly
+import database_batch_preview  # Menghubungkan enjin photo wizard Inner Box
 import os
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     """
     🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD: EXACT BATCH & SINGLE MATCH) 🌟
-    Dynamically swaps layouts based on database search results:
-    - If 1 label: Shows 3 clean buttons (PRINT, SAVE, CLOSE) without navigation.
-    - If >1 labels: Shows 4 batch buttons with unified ◀ PREV / NEXT ▶ slider bars.
+    Dynamically swaps layouts based on database search results.
     """
     if not senarai_kad_tunggal:
         return
+
+    # 🛠️ AMBIL INDEKS [0] SECARA PAKSA DARIPADA TUPLE (stk, pg)
+    normalized_images = []
+    normalized_paging = []
+    
+    for item in senarai_kad_tunggal:
+        if isinstance(item, (list, tuple)) and len(item) > 0:
+            # item[0] adalah objek imej tulen (stk), item[1] adalah teks paging (pg)
+            normalized_images.append(item[0]) 
+            normalized_paging.append(item[1] if len(item) > 1 else "BOX 1/1")
+        else:
+            normalized_images.append(item)
+            normalized_paging.append("BOX 1/1")
 
     tingkap_popup = tk.Toplevel(parent)
     tingkap_popup.title(f"INVOICE DATABASE PANEL - {inv_no}")
@@ -21,10 +33,8 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     tingkap_popup.grab_set()
 
     indeks_halaman = 0
-    senarai_kad_pembungkus_lokal = senarai_kad_tunggal
-    total_label = len(senarai_kad_pembungkus_lokal)
+    total_label = len(normalized_images)
 
-    # Standardized header using emerald green matching your blueprint setup
     lbl_header = tk.Label(tingkap_popup, text="", font=("Segoe UI", 10, "bold"), fg="#10B981", bg="#F8F9FA")
     lbl_header.pack(pady=12)
 
@@ -36,7 +46,8 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
 
     def kemaskini_paparan_selak():
         idx = indeks_halaman
-        img_kad, box_paging = senarai_kad_pembungkus_lokal[idx]
+        img_kad = normalized_images[idx]
+        box_paging = normalized_paging[idx]
         
         lbl_header.config(text=f"LABEL PREVIEW ({box_paging})  |  BATCH COUNTER: {idx + 1}/{total_label}")
         
@@ -61,44 +72,57 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
             indeks_halaman += 1
             kemaskini_paparan_selak()
 
+# invoice_preview_window.py - PART 2: TOTAL INTEGRATED ACTION BUTTONS
     def cetak_halaman_tunggal():
-        """Mencetak imej tunggal aktif pada skrin"""
-        item_aktif = senarai_kad_pembungkus_lokal[indeks_halaman]
-        img_clean = item_aktif[0] if isinstance(item_aktif, tuple) else item_aktif
-        invoice_print_manager.cetak_a4_master(img_clean)
+        """🖨️ Mencetak imej tunggal aktif pada skrin menggunakan Windows Photo Print Wizard"""
+        try:
+            img_clean = normalized_images[indeks_halaman]
+            database_batch_preview.laksanakan_windows_photo_wizard_tunggal([img_clean])
+        except Exception as e:
+            messagebox.showerror("PRINT ERROR", f"Failed to print current label:\n{str(e)}", parent=tingkap_popup)
 
     def cetak_semua_pukal():
-        """Mencetak kesemua imej kelompok bersiri dalam satu Windows Wizard window"""
+        """🖨️ Mencetak kesemua imej kelompok bersiri sekaligus"""
         if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} LABELS?", parent=tingkap_popup):
-            imej_bersih_list = [item[0] if isinstance(item, tuple) else item for item in senarai_kad_pembungkus_lokal]
-            invoice_print_manager.cetak_a4_batch(imej_bersih_list)
+            try:
+                database_batch_preview.laksanakan_windows_photo_wizard_tunggal(normalized_images)
+            except Exception as e:
+                messagebox.showerror("PRINT ERROR", f"Failed to print all labels:\n{str(e)}", parent=tingkap_popup)
 
     def simpan_halaman_tunggal():
-        """Menyimpan stiker aktif tunggal saat ini"""
-        img_kad, box_paging = senarai_kad_pembungkus_lokal[indeks_halaman]
-        paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
-        path_fail = filedialog.asksaveasfilename(
-            initialfile=f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png", 
-            defaultextension=".png", 
-            filetypes=[("PNG Image", "*.png")],
-            title="SAVE LABEL GRAPHIC",
-            parent=tingkap_popup
-        )
-        if path_fail:
-            img_kad.save(path_fail, "PNG")
-            messagebox.showinfo("COMPLETE", "LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
+        """💾 Menyimpan stiker aktif tunggal saat ini"""
+        try:
+            img_kad = normalized_images[indeks_halaman]
+            box_paging = normalized_paging[indeks_halaman]
+            
+            paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
+            path_fail = filedialog.asksaveasfilename(
+                initialfile=f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png", 
+                defaultextension=".png", 
+                filetypes=[("PNG Image", "*.png")],
+                title="SAVE LABEL GRAPHIC",
+                parent=tingkap_popup
+            )
+            if path_fail:
+                img_kad.convert("RGB").save(path_fail, "PNG")
+                messagebox.showinfo("COMPLETE", "LABEL SUCCESSFULLY SAVED!", parent=tingkap_popup)
+        except Exception as e:
+            messagebox.showerror("SAVE ERROR", str(e), parent=tingkap_popup)
 
     def simpan_semua_pukal():
-        """Menyimpan kesemua aset kelompok stiker sekaligus"""
+        """💾 Menyimpan kesemua aset kelompok stiker sekaligus"""
         folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL IMAGES", parent=tingkap_popup)
         if folder_tujuan:
-            for img_item, box_paging in senarai_kad_pembungkus_lokal:
-                img_clean = img_item[0] if isinstance(img_item, tuple) else img_item
-                paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
-                img_clean.save(os.path.join(folder_tujuan, f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png"), "PNG")
-            messagebox.showinfo("COMPLETE", f"ALL {total_label} LABELS SUCCESSFULLY SAVED!", parent=tingkap_popup)
+            try:
+                for idx, img_item in enumerate(normalized_images):
+                    box_paging = normalized_paging[idx]
+                    paging_bersih = str(box_paging).replace("/", "-").replace(" ", "_").upper()
+                    img_item.convert("RGB").save(os.path.join(folder_tujuan, f"LABEL_INVOICE_{inv_no}_{paging_bersih}.png"), "PNG")
+                messagebox.showinfo("COMPLETE", f"ALL {total_label} LABELS SUCCESSFULLY SAVED!", parent=tingkap_popup)
+            except Exception as e:
+                messagebox.showerror("SAVE ERROR", str(e), parent=tingkap_popup)
 
-    # ─── 1. BATCH PAGE SLIDER NAVIGATION PANEL (Only visible if >1 data) ───
+    # ─── NAVIGATION PANEL ───
     frame_nav = tk.Frame(tingkap_popup, bg="#F8F9FA")
     btn_prev = tk.Button(frame_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_prev.pack(side=tk.LEFT, padx=8)
@@ -108,22 +132,21 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. STANDARDIZED ACTION BUTTON FOOTER ───
+    # ─── ACTION FOOTER PANEL ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
     if total_label == 1:
-        # 🌟 SINGLE VIEW PATTERN (3 Clean Buttons: PRINT, SAVE, CLOSE)
         tk.Button(frame_btn, text="🖨️ PRINT", command=cetak_halaman_tunggal, bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="💾 SAVE", command=simpan_halaman_tunggal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        # 🌟 MULTIPLE BATCH VIEW PATTERN (4 Standardized Buttons)
         tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=cetak_halaman_tunggal, bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="🖨️ PRINT ALL", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()
+

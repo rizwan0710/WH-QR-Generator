@@ -1,3 +1,4 @@
+# form_invoice_packing_helper.py - PART 1: 3 RULES HARD LOCK ENGINE
 import tkinter as tk
 from tkinter import messagebox
 import sqlite3
@@ -12,16 +13,53 @@ def cuci_isi_borang_invoice(entry_inv_no, entry_so_no, var_customer, entry_total
     entry_inv_no.focus_set()
 
 def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_customer, label_counter):
-    """[KEPERLUAN 1 & 3] Enjin pengesan customer, alarm percampuran data, dan fungsi auto-jump kursor."""
+    """[3 RULES STRICT SECURITY] Enjin pengesan customer, alarm duplikasi, dan fungsi auto-jump."""
     val_semasa = entries_outer[idx].get().strip().upper()
     entries_outer[idx].delete(0, tk.END)
     entries_outer[idx].insert(0, val_semasa)
     
-    if not val_semasa.startswith("B"):
-        messagebox.showwarning("ERROR FORMAT", "PLEASE SCAN LEGIMATE OUTER BOX QR!", parent=entries_outer[idx].winfo_toplevel())
+    if not val_semasa:
+        return
+
+    # 🚨 RULE 1: IF BUKAN OUTERBOX SEQUENCE NUMBER -> ERROR
+    if not val_semasa.startswith("B") or len(val_semasa) < 5:
+        messagebox.showerror("🚨 INVALID FORMAT", "RULE 1 REJECTED!\n\nPLEASE SCAN A LEGITIMATE OUTER BOX QR (STARTS WITH 'B')!", parent=entries_outer[idx].winfo_toplevel())
+        entries_outer[idx].delete(0, tk.END)
         return "break"
 
-    # Jalankan pemeriksaan silang pangkalan data (Cross-reference lookup database)
+    # 🚨 RULE 2: IF OUTERBOX SAMA (DUPLICATE DALAM FORMBORANG AKTIF) -> ERROR
+    for i, entry in enumerate(entries_outer):
+        if i != idx and entry.get().strip().upper() == val_semasa:
+            messagebox.showerror(
+                "🚨 SAME BOX SCAN DETECTED",
+                f"RULE 2 REJECTED!\n\n"
+                f"You have already scanned this box [{val_semasa}] at Slot {i+1}!\n"
+                f"Every box entry in this form must be unique.",
+                parent=entries_outer[idx].winfo_toplevel()
+            )
+            entries_outer[idx].delete(0, tk.END)
+            return "break"
+
+    # 🚨 RULE 3: IF OUTERBOX DAH PERNAH SCAN / WUJUD DALAM DB INVOICE -> ERROR
+    try:
+        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            cursor = conn.cursor()
+            # Semak jika kod box 'B...' ini sudah dipetakan pada siri Invoice 'INV%' di lajur machine
+            cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' AND machine = ?", (val_semasa,))
+            if cursor.fetchone():
+                messagebox.showerror(
+                    "🚨 BOX ALREADY USED",
+                    f"RULE 3 REJECTED!\n\n"
+                    f"Outer Box [{val_semasa}] has ALREADY been scanned and linked to another invoice previously!\n"
+                    f"You cannot reuse or re-ship an old box.",
+                    parent=entries_outer[idx].winfo_toplevel()
+                )
+                entries_outer[idx].delete(0, tk.END)
+                return "break"
+    except Exception as e_db:
+        print(f"Database security check error: {str(e_db)}")
+
+    # Logik Pengesan Customer & Cross-reference database (Asal)
     cust_terkesan = "INTERNAL/COMBINED"
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
@@ -44,7 +82,6 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     if customer_semasa_main == "- AUTO DETECT -" or customer_semasa_main == "":
         var_customer.set(cust_terkesan)
     elif cust_terkesan != customer_semasa_main:
-        # 🚨 WARNING ALARM: MENYEKAT PERCAMPURAN CUSTOMER LAIN PADA INVOICE SAMA
         messagebox.showerror(
             "🚨 ALARM: DIFFERENT CUSTOMER!",
             f"CRITICAL ERROR! OUTER BOX AT THIS SLOT {idx+1} IS FOR:\n👉 [{cust_terkesan}]\n\n"
@@ -62,9 +99,9 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     # 🚀 AUTOMATIC FOCUS JUMP (Tembak kursor ke kotak bawah tanpa mouse)
     if idx + 1 < total_maksimum:
         entries_outer[idx + 1].focus_set()
-
+        # form_invoice_packing_helper.py - PART 2: DYNAMIC LAYOUT GENERATOR
 def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_customer, label_counter):
-    """[KEPERLUAN 2] Penjana senarai kolum baris input berasaskan Canvas Scroll (Had Maksimum 50)"""
+    """Penjana senarai kolum baris input berasaskan Canvas Scroll (Had Maksimum 50)"""
     for child in content_frame.winfo_children():
         child.destroy()
         
@@ -97,10 +134,10 @@ def laksanakan_penjanaan_kotak_pukal(entry_total_box, content_frame, entries_lis
     if total_val < 1:
         total_val = 1
     elif total_val > 50:
-        # [KEPERLUAN 2] Sekatan tegas maksima 50 kotak input untuk kestabilan memori
         messagebox.showwarning("MAXIMUM CAPACITY", "THE SYSTEM SET LIMITS TO ONLY 50 BOXES PER INVOICE")
         total_val = 50
         entry_total_box.delete(0, tk.END)
         entry_total_box.insert(0, "50")
         
     bina_kotak_imbasan_dinamik(content_frame, total_val, entries_list, var_customer, label_counter)
+
