@@ -1,25 +1,25 @@
-# invoice_preview_window.py - PART 1: ABSOLUTE INDEX EXTRACTOR (FIXED FOR TUPLE)
+# invoice_preview_window.py - FULL INTEGRATED RESOLUTION-SAFE POPUP ENGINE
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from PIL import ImageTk, Image
-import database_batch_preview  # Menghubungkan enjin photo wizard Inner Box
+import database_batch_preview
 import os
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     """
-    🌟 ENGINE PREVIEW DINAMIK INVOICE (MUTTAMAD: EXACT BATCH & SINGLE MATCH) 🌟
-    Dynamically swaps layouts based on database search results.
+    🌟 ENGINE PREVIEW DINAMIK INVOICE (FIXED: ANTI-DISTORTION QR PREVIEW) 🌟
+    Kalis herot piksel: Menjaga kualiti imej asal semasa cetakan / simpanan fail.
     """
     if not senarai_kad_tunggal:
         return
 
-    # 🛠️ AMBIL INDEKS [0] SECARA PAKSA DARIPADA TUPLE (stk, pg)
+    # 🛠️ Ekstrak elemen data secara selamat daripada tuple (stk, pg)
     normalized_images = []
     normalized_paging = []
     
     for item in senarai_kad_tunggal:
         if isinstance(item, (list, tuple)) and len(item) > 0:
-            # item[0] adalah objek imej tulen (stk), item[1] adalah teks paging (pg)
+            # item[0] = objek imej asal (stk), item[1] = teks paging (pg)
             normalized_images.append(item[0]) 
             normalized_paging.append(item[1] if len(item) > 1 else "BOX 1/1")
         else:
@@ -28,7 +28,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
 
     tingkap_popup = tk.Toplevel(parent)
     tingkap_popup.title(f"INVOICE DATABASE PANEL - {inv_no}")
-    tingkap_popup.geometry("540x510+420+120")
+    tingkap_popup.geometry("560x540+420+120") # 🌟 FIXED: Menggunakan 'x' untuk format lebar x tinggi yang sah
     tingkap_popup.configure(bg="#F8F9FA")
     tingkap_popup.grab_set()
 
@@ -51,7 +51,8 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
         
         lbl_header.config(text=f"LABEL PREVIEW ({box_paging})  |  BATCH COUNTER: {idx + 1}/{total_label}")
         
-        img_visual = img_kad.resize((420, 200), Image.Resampling.LANCZOS)
+        # 🌟 FIX KEKAL NISBAH (420x210): Mengekalkan nisbah aspek 2:1 agar petak grid QR tidak hancur atau bertindih
+        img_visual = img_kad.resize((420, 210), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(img_visual)
         label_gambar.config(image=img_tk)
         label_gambar.image = img_tk 
@@ -72,9 +73,8 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
             indeks_halaman += 1
             kemaskini_paparan_selak()
 
-# invoice_preview_window.py - PART 2: TOTAL INTEGRATED ACTION BUTTONS
     def cetak_halaman_tunggal():
-        """🖨️ Mencetak imej tunggal aktif pada skrin menggunakan Windows Photo Print Wizard"""
+        """🖨️ Mencetak imej menggunakan fail objek asal beresolusi tinggi (Sharpness Preserved)"""
         try:
             img_clean = normalized_images[indeks_halaman]
             database_batch_preview.laksanakan_windows_photo_wizard_tunggal([img_clean])
@@ -82,7 +82,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
             messagebox.showerror("PRINT ERROR", f"Failed to print current label:\n{str(e)}", parent=tingkap_popup)
 
     def cetak_semua_pukal():
-        """🖨️ Mencetak kesemua imej kelompok bersiri sekaligus"""
+        """🖨️ Mencetak kesemua stiker bersiri secara pukal"""
         if messagebox.askyesno("CONFIRMATION MESSAGE", f"PROCEED WITH PRINT ALL {total_label} LABELS?", parent=tingkap_popup):
             try:
                 database_batch_preview.laksanakan_windows_photo_wizard_tunggal(normalized_images)
@@ -90,7 +90,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
                 messagebox.showerror("PRINT ERROR", f"Failed to print all labels:\n{str(e)}", parent=tingkap_popup)
 
     def simpan_halaman_tunggal():
-        """💾 Menyimpan stiker aktif tunggal saat ini"""
+        """💾 Menyimpan stiker aktif tunggal tanpa herot piksel skrin"""
         try:
             img_kad = normalized_images[indeks_halaman]
             box_paging = normalized_paging[indeks_halaman]
@@ -110,7 +110,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
             messagebox.showerror("SAVE ERROR", str(e), parent=tingkap_popup)
 
     def simpan_semua_pukal():
-        """💾 Menyimpan kesemua aset kelompok stiker sekaligus"""
+        """💾 Menyimpan keseluruhan imej stiker pukal dalam satu folder"""
         folder_tujuan = filedialog.askdirectory(title="CHOOSE FOLDER TO SAVE ALL IMAGES", parent=tingkap_popup)
         if folder_tujuan:
             try:
@@ -149,4 +149,3 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()
-

@@ -1,3 +1,4 @@
+# label_invoice_designer.py - FULL FIXED 600 DPI TEMPLATE ENGINE
 from PIL import Image, ImageDraw, ImageFont
 import os
 
@@ -77,12 +78,10 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
         try:
             img_logo_raw = Image.open(logo_fail)
             logo_w, logo_h = int(60 * skala), int(42 * skala)
-            # Menggunakan penapis NEAREST/BILINEAR untuk mengelakkan garisan tepi logo termal kabur pecah
             img_logo_resized = img_logo_raw.resize((logo_w, logo_h), Image.Resampling.BILINEAR)
             
             pos_x, pos_y = int(250 * skala), int(15 * skala)
             
-            # Tampal imej logo mengikut format saluran perlindungan Alpha Channel Masking
             if img_logo_resized.mode == 'RGBA':
                 imej_kanvas.paste(img_logo_resized, (pos_x, pos_y), mask=img_logo_resized)
             elif 'transparency' in img_logo_resized.info:
@@ -95,9 +94,9 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
     else:
         lukis.text((int(250 * skala), int(22 * skala)), "[ OHTA ]", fill="black", font=font_data)
 
-    # 5. Tampal Gambar QR Code Pasangan Data Bersih (Penapis NEAREST untuk High Density Barcode)
+    # 5. 🌟 [CRITICAL SAIZ FIX]: Gunakan LANCZOS anti-alias resampling supaya susunan pixel grid kod QR tidak herot / hancur
     qr_saiz = int(72 * skala)
-    img_qr_resized = img_qr.resize((qr_saiz, qr_saiz), Image.Resampling.NEAREST)  
+    img_qr_resized = img_qr.resize((qr_saiz, qr_saiz), Image.Resampling.LANCZOS)  
     imej_kanvas.paste(img_qr_resized, (int(248 * skala), int(62 * skala)))
     
     # 6. Pemformatan Teks Paging Box (BOX 1/1, BOX 1/2) - Sentiasa Di Tengah Bawah Pelekat

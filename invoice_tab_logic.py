@@ -1,4 +1,4 @@
-# invoice_tab_logic.py - FULL CLEAN INTEGRATED CODE (NO PACKING DISPLAY IN QR FOR EXISTING DATA)
+# invoice_tab_logic.py - FULL CLEAN INTEGRATED CODE (100% ORIGINAL TABLE INDEX RECOV)
 import sqlite3
 import csv
 import qrcode
@@ -55,7 +55,7 @@ def carian_invoice(jadual, entry_search):
                 outer_link = str(r[6]).upper().strip() if r[6] else "NONE"
                 qty_clean  = f"{str(r[5]).upper().replace('PCS', '').strip()} PCS"
                 
-                # Lajur Treeview: ("Select", "ID", "Date", "Customer", "Invoice No", "SO No", "Quantity", "Page Status", "Linked Outer Box", "Box Type", "Invoice Sequence No")
+                # Lajur Treeview asal milik abang (Kekal 100%)
                 jadual.insert("", tk.END, values=(
                     "☐", r[0], r[2], cust_clean, inv_clean, so_clean, qty_clean, page_stat, outer_link, "INVOICE LOG", r[1]
                 ), tags=('normal',))
@@ -92,7 +92,7 @@ def papar_pratonton_invoice_terpilih(jadual, win):
 
     try:
         for r in item_terpilih:
-            # Pengekstrakan nilai mengikut susunan indeks lajur Treeview
+            # Pengekstrakan nilai mengikut susunan indeks lajur Treeview asal milik abang
             cust_name = str(r[3])
             inv_no    = str(r[4])
             so_no     = str(r[5])
@@ -101,7 +101,6 @@ def papar_pratonton_invoice_terpilih(jadual, win):
             outer_seq = str(r[8])
             seq_inv   = str(r[10]) # Invoice Sequence No (e.g. INV26xxxx)
 
-            # 🌟 KINI DIUBAH KEPADA PAYLOAD UNIVERSAL TERPIAWAI BAGI REKOD SEDIA ADA (TANPA PACKING DISPLAY) 🌟
             qr_payload = (
                 f"SERIAL NO  : {seq_inv.strip()}\n"
                 f"INVOICE NO : {inv_no.strip()}\n"
@@ -110,13 +109,13 @@ def papar_pratonton_invoice_terpilih(jadual, win):
                 f"QUANTITY   : {qty_str.strip()}"
             )
 
-            # 1. Bina semula Kod QR Universal secara on-the-fly untuk data lama
-            qr = qrcode.QRCode(version=1, border=1)
+            # Bina semula Kod QR Universal
+            qr = qrcode.QRCode(version=1, border=4, error_correction=qrcode.constants.ERROR_CORRECT_M)
             qr.add_data(qr_payload)
             qr.make(fit=True)
-            im_qr = qr.make_image().convert("RGB")
+            im_qr = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
-            # 2. Hasilkan semula imej stiker grafik melalui modul label designer
+            # Hasilkan semula imej stiker grafik melalui modul label designer
             stk_img = lid.bina_imej_invoice(
                 img_qr=im_qr, 
                 invoice_no=inv_no, 
@@ -129,11 +128,9 @@ def papar_pratonton_invoice_terpilih(jadual, win):
             )
             
             if stk_img:
-                # Masukkan ke dalam format tuple yang diperlukan oleh panel pratonton (Image, Text_Paging)
                 senarai_kad_stiker.append((stk_img, page_stat))
 
         if senarai_kad_stiker:
-            # 3. Lancarkan tetingkap popup pengurus paparan dan cetakan
             invoice_preview_window.buka_popup_individual_1by1(win, senarai_kad_stiker, inv_no_induk)
         else:
             messagebox.showerror("RENDER ERROR", "FAILED TO GENERATE GRAPHICAL IMAGE LABELS FOR PREVIEW.", parent=win)
@@ -177,20 +174,18 @@ def susun_lajur_treeview(jadual, lajur, menaik):
     pass
 
 def eksport_invoice_excel():
+    p = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")])
+    if not p:
+        return
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, sequence_no, tarikh, drawing_no, part_no, quantity, machine, customer FROM rekod_qr WHERE sequence_no LIKE 'INV%' ORDER BY id DESC")
-            semua_data = cursor.fetchall()
-        if not semua_data:
-            messagebox.showwarning("WARNING", "NO INVOICE DATA TO BE EXPORT!")
-            return
-        path_excel = filedialog.asksaveasfilename(initialfile="Laporan_Form3_Invoice_Packing.csv", defaultextension=".csv")
-        if path_excel:
-            with open(path_excel, mode='w', newline='', encoding='utf-8-sig') as file:
-                writer = csv.writer(file)
-                writer.writerow(["ID", "Invoice Sequence No", "Date", "Invoice No", "SO No", "Quantity", "Linked Outer Box", "Customer"])
-                writer.writerows(semua_data)
-            messagebox.showinfo("SUCCESS", "Invoice packing export report saved successfully!")
+            cursor.execute("SELECT id, sequence_no, tarikh, drawing_no, part_no, quantity, machine, lotcard_no, customer FROM rekod_qr WHERE sequence_no LIKE 'INV%' ORDER BY id DESC")
+            rows = cursor.fetchall()
+            with open(p, mode="w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["ID", "Sequence No", "Date", "Drawing No", "Part No", "Quantity", "Machine/Outer", "Page Status", "Customer"])
+                writer.writerows(rows)
+        messagebox.showinfo("SUCCESS", "Invoice logs exported successfully!")
     except Exception as e:
         messagebox.showerror("EXPORT ERROR", str(e))

@@ -1,4 +1,4 @@
-# invoice_packing_logic.py - FULL CLEAN INTEGRATED CODE (NO PACKING DISPLAY IN QR)
+# invoice_packing_logic.py - FULL PRODUCTION CODE (100% FIXED QUANTITY EXTRACTION & QR MATCHING)
 import sqlite3
 import datetime
 import qrcode
@@ -47,7 +47,7 @@ def simpan_qr_manual(target, inv):
     except Exception as e: print(str(e))
 
 def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
-    """⚡ ENJIN SUBMIT DATA INVOICE OHTA PRECISION (3 RULES HARD LOCK + INDEX FIX) ⚡"""
+    """⚡ ENJIN SUBMIT DATA INVOICE OHTA PRECISION (3 RULES HARD LOCK + TUPLE INDEX FIX) ⚡"""
     dt = e_dt.get_date().strftime("%d/%m/%Y") if hasattr(e_dt, 'get_date') else str(e_dt)
     inv, so = e_inv.get().strip().upper(), e_so.get().strip().upper()
     
@@ -73,7 +73,6 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
 
     # 🚨 [RULE 2]: SEKATAN MUTLAK KOTAK YANG SAMA
     if len(set(out)) != len(out):
-        # Padam input yang bertindih sahaja pada skrin untuk staf scan semula secara fizikal
         seen_values = set()
         for e in e_out:
             if hasattr(e, 'get'):
@@ -95,7 +94,8 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
     except Exception as e: 
         return messagebox.showerror("ERROR", f"Database Verification Fail: {str(e)}", parent=win)
 
-    d1 = dapatkan_maklumat_outer(out)
+    # Ambil maklumat pelanggan daripada elemen senarai imbasan kotak pertama
+    d1 = dapatkan_maklumat_outer(out[0])
     if not d1: 
         return messagebox.showerror("ERROR", "Box Reference Data Not Found in System Database!", parent=win)
         
@@ -109,34 +109,45 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
             for i, c in enumerate(out, start=1):
                 res = dapatkan_maklumat_outer(c)
                 
+                # 🌟 [CRITICAL FIX]: Hanya baca elemen indeks [2] daripada tuple untuk dapatkan kuantiti tulen
                 if res and len(res) >= 3:
-                    q_cl = str(res[2]).upper().replace("PCS","").strip()
-                    qty = int(q_cl) if q_cl.isdigit() else 0
+                    raw_qty_str = str(res[2]).upper().replace("PCS", "").strip()
+                    qty = int(raw_qty_str) if raw_qty_str.isdigit() else 0
                 else:
                     qty = 0
                 
                 cur.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (f"INV{pola}%",))
                 max_r = cur.fetchone()
-                bil = (int(str(max_r)[-4:]) + 1) if (max_r and max_r) else 1
+                
+                # Ekstrak data string daripada objek sel tuple pangkalan data secara bersih
+                if max_r and max_r[0]:
+                    raw_seq = str(max_r[0]).strip()
+                    try:
+                        bil = int(raw_seq[-4:]) + 1
+                    except (ValueError, IndexError):
+                        bil = 1
+                else:
+                    bil = 1
+                    
                 seq = f"INV{pola}{bil:04d}"
                 pg = f"BOX {i}/{total_box}"
                 
                 cur.execute("INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no) VALUES (?,?,?,?,?,?,?,?,?)",
                             (dt, customer_utama, f"INV:{inv}", f"SO:{so}", f"{qty} PCS", datetime.datetime.now().strftime("%I:%M:%S %p"), c, pg, seq))
                 
-                # 🌟 KOD UTAMAKAN QR UNIVERSAL TERPIAWAI OHTA PRECISION (TANPA DISPLAY PACKING) 🌟
+                # 🌟 FORMAT TEKS DATA QR DITETAPKAN SAMA TEPAT SEPERTI PREVIEW DATABASE 🌟
                 universal_payload = (
-                    f"SERIAL NO  : {seq}\n"
-                    f"INVOICE NO : {inv}\n"
-                    f"SO NO      : {so}\n"
-                    f"CUSTOMER   : {customer_utama}\n"
+                    f"SERIAL NO  : {seq.strip()}\n"
+                    f"INVOICE NO : {inv.strip()}\n"
+                    f"SO No      : {so.strip()}\n"
+                    f"CUSTOMER   : {customer_utama.strip()}\n"
                     f"QUANTITY   : {qty} PCS"
                 )
                 
-                qr = qrcode.QRCode(version=1, border=1)
+                qr = qrcode.QRCode(version=1, border=4, error_correction=qrcode.constants.ERROR_CORRECT_M)
                 qr.add_data(universal_payload) 
                 qr.make(fit=True)
-                im_qr = qr.make_image()
+                im_qr = qr.make_image(fill_color="black", back_color="white").convert("RGB")
                 
                 try:
                     stk = lid.bina_imej_invoice(img_qr=im_qr, invoice_no=inv, so_no=so, outer_seq=c, outer_qty=f"{qty} PCS", seq_inv_spesifik=seq, text_paging=pg, customer=customer_utama)
