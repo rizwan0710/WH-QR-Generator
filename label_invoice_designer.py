@@ -19,8 +19,6 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
     Hardware Target : Xprinter XP-420B (Auto-Size & High Sharpness Enabled)
     """
     # 🌟 FORMULA PENGIRAAN MATRIKS SKALA PIKSEL 600 DPI 🌟
-    # Kod asal menggunakan w_base=340, h_base=220. Untuk mencapai resolusi sekitar 1890 piksel,
-    # kita tingkatkan skala penggandaan dalaman dari '2' kepada faktor ketumpatan tinggi '5.5'
     skala = 5.5
     w_base, h_base = 340, 170 # Nisbah dilaraskan kepada 2:1 (80mm x 40mm) untuk ketepatan fizikal label
     w, h = int(w_base * skala), int(h_base * skala)
@@ -31,15 +29,30 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
     # Membesarkan saiz fon (Font Scaling Matrix) secara seimbang mengikut ketumpatan kanvas 600 DPI
     font_data = muatkan_fon_selamat("arial.ttf", int(14 * skala))
     font_bold = muatkan_fon_selamat("arialbd.ttf", int(14 * skala))
-    font_header = muatkan_fon_selamat("arialbd.ttf", int(17 * skala))
     font_page = muatkan_fon_selamat("arialbd.ttf", int(13 * skala))
+    
+    # 🟢 ENJIN SKALA DINAMIK INVOIS 600 DPI: Laras saiz font asas mengikut kepanjangan karakter huruf
+    teks_pelanggan = str(customer).strip().upper() if str(customer).strip() != "NONE" and str(customer).strip() != "" else "INTERNAL/COMBINED"
+    panjang_nama_inv = len(teks_pelanggan)
+    
+    saiz_font_asas_inv = 17  # Saiz lalai asal
+    if panjang_nama_inv > 30:
+        saiz_font_asas_inv = 8.5  # Nama terlampau panjang (Kecilkan secara agresif)
+    elif panjang_nama_inv > 25:
+        saiz_font_asas_inv = 11.0  # Nama sederhana panjang
+    elif panjang_nama_inv > 18:
+        saiz_font_asas_inv = 13.5  # Kecilkan sikit sahaja
+        
+    font_header = muatkan_fon_selamat("arialbd.ttf", int(saiz_font_asas_inv * skala))
         
     # 1. Bingkai Outline Hitam Luar (Mengekalkan ketebalan mengikut nisbah skala)
     lukis.rectangle([int(12 * skala), int(10 * skala), w - int(12 * skala), h - int(10 * skala)], outline="black", width=int(2.5 * skala))
     
-    # 2. Paparan Nama Pelanggan (Customer Corporate Header)
-    teks_pelanggan = str(customer).strip().upper() if str(customer).strip() != "NONE" and str(customer).strip() != "" else "INTERNAL/COMBINED"
-    lukis.text((int(22 * skala), int(20 * skala)), teks_pelanggan, fill="black", font=font_header)
+    # 📏 ALIGNMENT MENEGAK INVOIS: Mengira jarak tengah paksi-Y supaya teks kekal center jika mengecil
+    pos_y_center_inv = 20 + ((17 - saiz_font_asas_inv) // 2)
+    
+    # 2. Paparan Nama Pelanggan (Customer Corporate Header - Saiz Dinamik)
+    lukis.text((int(22 * skala), int(pos_y_center_inv * skala)), teks_pelanggan, fill="black", font=font_header)
     
     # 3. Parameter Kedudukan Baris Data Kompak (Asal Susunan Struktur Reka Bentuk Abang)
     start_y = int(52 * skala)  
@@ -95,9 +108,6 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
     
     lukis.text((pos_x_tengah, int(142 * skala)), text_box_paging, fill="black", font=font_page)
     
-    # 🌟 KOREKSI UTAMA UNTUK AUTO-SIZE KEPADATAN PIKSEL TINGGI 🌟
-    # Jangan kecilkan balik imej (Hapus imej_kanvas.resize bawah) untuk membiarkan imej kekal 
-    # dalam saiz resolusi penuh 600 DPI berskala tinggi, membolehkan Xprinter buat auto-fit yang sangat tajam!
     return imej_kanvas
 
 def susun_ke_kertas_a4(senarai_had):

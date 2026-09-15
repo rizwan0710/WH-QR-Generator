@@ -7,7 +7,9 @@ def buka_borang_outer(root):
     """🌟 OPTIMIZED OUTER FORM UI WITH WP PREFIX VALIDATION LOCK 🌟"""
     win_outer = tk.Toplevel(root)
     win_outer.title("FORM 2: OUTER PACKING ")
-    win_outer.geometry("540x640+450+50")
+    
+    # 📏 Ketinggian tetingkap diturunkan ke 430 supaya border bawah rapat dengan butang aksi
+    win_outer.geometry("540x430+450+50")
     win_outer.configure(bg="#F8F9FA")
     win_outer.resizable(False, False)
     win_outer.grab_set()
@@ -17,8 +19,9 @@ def buka_borang_outer(root):
     tk.Label(win_outer, text="ENTER PRODUCTION DETAILS PRECISELY:", font=("Segoe UI", 9, "italic"), fg="#64748B", bg="#F8F9FA").pack(pady=(0, 10))
 
     # Bingkai Kemasukan Data Utama
+    # 🔽 Jarak margin bawah ditukar ke pady=(0, 8) bagi merapatkan kotak data dengan butang hijau bawah
     frame_data_entry = tk.LabelFrame(win_outer, text=" DATA ENTRY ", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="#F8F9FA", padx=25, pady=10)
-    frame_data_entry.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 15))
+    frame_data_entry.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 8))
 
     lbl_style = {"font": ("Segoe UI", 9, "bold"), "fg": "#334155", "bg": "#F8F9FA", "width": 20, "anchor": "w"}
     ent_style = {"font": ("Segoe UI", 10), "relief": "groove", "bd": 1}
@@ -85,16 +88,17 @@ def buka_borang_outer(root):
     # ─── DEKLARASI BUTANG SUBMIT UTAMA ───
     btn_submit = tk.Button(win_outer, text="SUBMIT & GENERATE OUTER QR", 
                            command=lambda: logic.proses_submit_outer(win_outer, entry_date, entries_inner), 
-                           bg="#007ACC", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2")
+                           bg="#1E7E34", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2")
     btn_submit.pack(fill="x", padx=30, pady=(0, 4))
 
     # Barisan Butang Aksi Bawah
     frame_action_bar = tk.Frame(win_outer, bg="#F8F9FA")
-    frame_action_bar.pack(fill="x", padx=30, pady=(0, 20))
+    # 🔽 Jarak margin bawah diturunkan daripada 20 ke 10 supaya ia terletak cantik di kedudukan bawah tingkap
+    frame_action_bar.pack(fill="x", padx=30, pady=(0, 10))
     frame_action_bar.columnconfigure(0, weight=1)
     frame_action_bar.columnconfigure(1, weight=1)
 
-    tk.Button(frame_action_bar, text="🔄 RESET", command=cuci_isian, bg="#6C757D", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 3), sticky="ew")
+    tk.Button(frame_action_bar, text="🔄 RESET", command=cuci_isian, bg="#FD7E14", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 3), sticky="ew")
     tk.Button(frame_action_bar, text="◀ BACK", command=win_outer.destroy, bg="#212529", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=1, padx=(3, 0), sticky="ew")
 
     entries_inner[0].focus_set()

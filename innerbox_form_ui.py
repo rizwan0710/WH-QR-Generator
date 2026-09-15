@@ -131,7 +131,7 @@ def laksanakan_import_excel_machine(win_induk):
 def buka_borang_warehouse(root):
     win_inner = tk.Toplevel(root)
     win_inner.title("FORM 1: INNER BOX PRODUCTION ENTRY")
-    win_inner.geometry("540x660+450+30") 
+    win_inner.geometry("540x550+450+30") 
     win_inner.configure(bg="#F8F9FA")
     win_inner.resizable(False, False)
     win_inner.grab_set()
@@ -142,7 +142,7 @@ def buka_borang_warehouse(root):
     tk.Label(win_inner, text="ENTER PRODUCTION DETAILS PRECISELY:", font=("Segoe UI", 9, "italic"), fg="#64748B", bg="#F8F9FA").pack(pady=(0, 10))
     
     frame_data_entry = tk.LabelFrame(win_inner, text=" DATA ENTRY ", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="#F8F9FA", padx=25, pady=10)
-    frame_data_entry.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 15))
+    frame_data_entry.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 4))
     
     lbl_style = {"font": ("Segoe UI", 9, "bold"), "fg": "#334155", "bg": "#F8F9FA", "width": 20, "anchor": "w"}
     ent_style = {"font": ("Segoe UI", 10), "relief": "groove", "bd": 1}

@@ -75,7 +75,9 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     """Enjin meluncur dinamik dengan pengiraan aspek ratio kod QR asli kilang."""
     win = tk.Toplevel(parent)
     win.title("PRODUCTION INNER BATCH STICKER")
-    win.geometry("540x670+450+30")
+    
+    # 📏 Ketinggian tetingkap diturunkan ke 560 supaya border bawah rapat dengan barisan butang aksi
+    win.geometry("540x560+450+30")
     win.configure(bg="#F8F9FA")
     win.grab_set()
     
@@ -83,20 +85,22 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     total_label = len(senarai_kad)
 
     lbl = tk.Label(win, text="", font=("Segoe UI", 10, "bold"), fg="#2E7D32", bg="#F8F9FA")
-    lbl.pack(pady=12)
+    lbl.pack(pady=8)
     
+    # 🛠️ PERBAIKAN: Menukar expand=True kepada expand=False untuk menyekat bingkai putih memanjang ke bawah
     fr_bg = tk.Frame(win, bg="white", bd=1, relief="groove")
-    fr_bg.pack(fill=tk.BOTH, expand=True, padx=30, pady=5)
+    fr_bg.pack(fill=tk.BOTH, expand=False, padx=30, pady=(0, 5))
     
     lbl_img = tk.Label(fr_bg, bg="white")
-    lbl_img.pack(padx=15, pady=15, expand=True, fill=tk.BOTH)
+    lbl_img.pack(padx=10, pady=10, expand=True, fill=tk.BOTH)
 
     def kemaskini_selak():
         nonlocal indeks_halaman
         img, seq = senarai_kad[indeks_halaman]
         lbl.config(text=f"STICKER GENERATED ({seq})  |  BATCH: {indeks_halaman + 1}/{total_label}")
         
-        lebar_had, tinggi_had = 340, 440
+        # 📏 Nisbah ketinggian previu imej diturunkan sedikit agar sepadan dengan tetingkap kompak
+        lebar_had, tinggi_had = 340, 350
         img_visual = img.resize((lebar_had, tinggi_had), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(img_visual)
         lbl_img.config(image=img_tk)
@@ -129,31 +133,36 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
         img_kad, seq_no = senarai_kad[indeks_halaman]
         ipl.simpan_qr_manual(img_kad, seq_no)
 
-    # Baris Navigasi Selak Halaman
+    # Baris Navigasi Selak Halaman (Warna diselaraskan kepada Kelabu Gelap #212529)
     fr_nav = tk.Frame(win, bg="#F8F9FA")
-    btn_prev = tk.Button(fr_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
-    btn_next = tk.Button(fr_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev = tk.Button(fr_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#212529", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_next = tk.Button(fr_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#212529", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     
     if total_label > 1: 
-        fr_nav.pack(pady=5)
+        fr_nav.pack(pady=4)
         btn_prev.pack(side=tk.LEFT, padx=8)
         btn_next.pack(side=tk.LEFT, padx=8)
 
     # Barisan Butang Kawalan Output Bawah Flat Style Seragam (English Labels)
     fr_btn = tk.Frame(win, bg="#F8F9FA")
-    fr_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
+    # 🔽 Diturunkan kepada margin rapat pady=(0, 10) ke sempadan bawah tingkap
+    fr_btn.pack(pady=(0, 10), side=tk.BOTTOM, fill=tk.X, padx=20)
     b_st = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
     
     if total_label == 1:
-        # Pautan murni imej RAM tunggal terus ke enjin letusan dialog gambar Windows Explorer
-        tk.Button(fr_btn, text="🖨️ PRINT ", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#22C55E", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        # 🟢 PRINT -> Ditukar warna Hijau (#1E7E34)
+        tk.Button(fr_btn, text="🖨️ PRINT ", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        # 🟠 SAVE -> Ditukar warna Oren (#FD7E14)
+        tk.Button(fr_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#FD7E14", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
     else:
-        # Pautan murni senarai imej batch RAM terus ke enjin letusan dialog gambar Windows Explorer
-        tk.Button(fr_btn, text="📦 PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#22C55E", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(fr_btn, text="🔥 PRINT ALL", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([k[0] for k in senarai_kad]), bg="#10B981", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(fr_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        # 🟢 PRINT CURRENT -> Ditukar warna Hijau (#1E7E34)
+        tk.Button(fr_btn, text="📦 PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        # 🟢 PRINT ALL -> Ditukar warna Hijau (#1E7E34)
+        tk.Button(fr_btn, text="🔥 PRINT ALL", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([k[0] for k in senarai_kad]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+        # 🟠 SAVE ALL -> Ditukar warna Oren (#FD7E14)
+        tk.Button(fr_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#FD7E14", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
         
-    tk.Button(fr_btn, text="❌ CLOSE", command=win.destroy, bg="#374151", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+    # ⚫ CLOSE -> Ditukar warna Kelabu Gelap (#212529)
+    tk.Button(fr_btn, text="❌ CLOSE", command=win.destroy, bg="#212529", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     
     kemaskini_selak()

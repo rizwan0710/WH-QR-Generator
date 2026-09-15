@@ -6,18 +6,36 @@ def bina_imej_gabungan(img_qr, tarikh, drawing, part, qty, mfg, mac, sequence_no
     imej_kanvas = Image.new("RGB", (lebar_kad, tinggi_kad), "white")
     lukis = ImageDraw.Draw(imej_kanvas)
     
+    # Sediakan pembersihan nama customer siap-siap
+    text_customer = str(customer).upper().strip()
+    
     try:
         font_regular = ImageFont.truetype("arial.ttf", 12)
         font_bold    = ImageFont.truetype("arialbd.ttf", 12)
-        font_header  = ImageFont.truetype("arialbd.ttf", 15)
         font_footer  = ImageFont.truetype("arialbd.ttf", 11)
         font_serial  = ImageFont.truetype("arialbd.ttf", 11)
+        
+        # 🟢 PENGKONDISIAN HURUF AGRESIF (FIX OVERFLOW)
+        saiz_font_header = 15  # Saiz default asal abang
+        panjang_nama = len(text_customer)
+        
+        if panjang_nama > 35:
+            saiz_font_header = 10  # Nama terlampau panjang (Macam BEIJING SIEMENS CERBERUS)
+        elif panjang_nama > 28:
+            saiz_font_header = 11  # Nama sederhana panjang
+        elif panjang_nama > 22:
+            saiz_font_header = 13  # Kecilkan sikit sahaja
+            
+        font_header = ImageFont.truetype("arialbd.ttf", saiz_font_header)
+        
     except (IOError, TypeError):
         font_regular = ImageFont.load_default()
         font_bold    = ImageFont.load_default()
         font_header  = ImageFont.load_default()
         font_footer  = ImageFont.load_default()
         font_serial  = ImageFont.load_default()
+        saiz_font_header = 15
+
 
     lukis.rectangle([15, 15, lebar_kad-15, tinggi_kad-15], outline="black", width=2)
     

@@ -70,7 +70,9 @@ def buka_borang_invoice(root):
     # Slot Baru: Dynamic Input Controller Setup
     frame_row_setup = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row_setup.pack(fill=tk.X, pady=4)
-    tk.Label(frame_row_setup, text="Total Box Amount :", font=("Segoe UI", 9, "bold"), fg="#E65100", bg="#F8F9FA", width=18, anchor="w").pack(side=tk.LEFT)
+    
+    # 🟠 TUKAR TEKS TOTAL BOX AMOUNT KEPADA OREN (#FD7E14)
+    tk.Label(frame_row_setup, text="Total Box Amount :", font=("Segoe UI", 9, "bold"), fg="#FD7E14", bg="#F8F9FA", width=18, anchor="w").pack(side=tk.LEFT)
     
     entry_total_box = tk.Entry(frame_row_setup, font=("Segoe UI", 10, "bold"), relief="groove", bd=1, width=10, justify="center")
     entry_total_box.insert(0, "4") 
@@ -81,7 +83,8 @@ def buka_borang_invoice(root):
         if entries_outer and len(entries_outer) > 0:
             entries_outer[0].focus_set()
 
-    tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#E65100", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
+    # 🟠 TUKAR WARNA BUTANG APPLY KEPADA OREN (#FD7E14)
+    tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#FD7E14", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
     
     lbl_counter = tk.Label(frame_row_setup, text="Scanned: 0 / 4 Boxes", font=("Segoe UI", 9, "bold"), fg="#64748B", bg="#F8F9FA")
     lbl_counter.pack(side=tk.RIGHT, padx=5)
@@ -122,15 +125,18 @@ def buka_borang_invoice(root):
             win_inv.children.get("!button")
         )
 
-    # ─── Barisan Butang Kawalan Aksi Bawah (NAMA BUTANG TELAH DITUKAR ASAL) ───
-    tk.Button(win_inv, text="SUBMIT & PRINT INVOICE QR", command=eksekusi_submit_dan_cetak_pukal, bg="#007ACC", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=25, pady=(0, 4))
+    # ─── Barisan Butang Kawalan Aksi Bawah (TUKAR KE HIJAU #1E7E34) ───
+    tk.Button(win_inv, text="SUBMIT & PRINT INVOICE QR", command=eksekusi_submit_dan_cetak_pukal, bg="#1E7E34", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=25, pady=(0, 4))
     
     frame_action_bar = tk.Frame(win_inv, bg="#F8F9FA")
     frame_action_bar.pack(fill="x", padx=25, pady=(0, 15))
     frame_action_bar.columnconfigure(0, weight=1)
     frame_action_bar.columnconfigure(1, weight=1)
     
-    tk.Button(frame_action_bar, text="🔄 RESET", command=lambda: helper.cuci_isi_borang_invoice(entry_inv_no, entry_so_no, var_customer, entry_total_box, frame_scroll_content, entries_outer, lbl_counter), bg="#6C757D", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 3), sticky="ew")
+    # 🔄 TUKAR WARNA BUTANG RESET KEPADA OREN (#FD7E14)
+    tk.Button(frame_action_bar, text="🔄 RESET", command=lambda: helper.cuci_isi_borang_invoice(entry_inv_no, entry_so_no, var_customer, entry_total_box, frame_scroll_content, entries_outer, lbl_counter), bg="#FD7E14", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=0, padx=(0, 3), sticky="ew")
+    
+    # ◀ KEKALKAN WARNA BUTANG BACK KELABU GELAP (#212529)
     tk.Button(frame_action_bar, text="◀ BACK", command=win_inv.destroy, bg="#212529", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").grid(row=0, column=1, padx=(3, 0), sticky="ew")
 
     entry_inv_no.focus_set()

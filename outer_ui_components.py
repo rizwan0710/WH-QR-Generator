@@ -33,5 +33,8 @@ def bina_popup_preview_standalone(parent, img_gabung, seq_outer, cetak_cb, simpa
     frame_btn = tk.Frame(tingkap, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM)
     
-    tk.Button(frame_btn, text="PRINT", command=cetak_cb, bg="#198754", fg="white", font=("Segoe UI", 10, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=8)
-    tk.Button(frame_btn, text="SAVE", command=simpan_cb, bg="#FF9800", fg="white", font=("Segoe UI", 10, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=8)
+    # 🟢 Menukar warna butang PRINT kepada Hijau (#1E7E34) mengikut contoh
+    tk.Button(frame_btn, text="PRINT", command=cetak_cb, bg="#1E7E34", fg="white", font=("Segoe UI", 10, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=8)
+    
+    # 🟠 Menukar warna butang SAVE kepada Oren (#FD7E14) mengikut butang RESET contoh
+    tk.Button(frame_btn, text="SAVE", command=simpan_cb, bg="#FD7E14", fg="white", font=("Segoe UI", 10, "bold"), width=14, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=8)

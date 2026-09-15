@@ -38,7 +38,8 @@ def bina_input_scanner(parent):
     frame = tk.Frame(parent, bg="#F8F9FA")
     frame.pack(pady=8, padx=35, fill="x")
     
-    tk.Label(frame, text="SCANNER INPUT (OUTER QR):", font=("Segoe UI", 9, "bold"), fg="#E65100", bg="#F8F9FA").pack(anchor="w", pady=2)
+    # 🟠 Menukar label tulisan scanner input supaya mengikut ton warna oren standard (#FD7E14)
+    tk.Label(frame, text="SCANNER INPUT (OUTER QR):", font=("Segoe UI", 9, "bold"), fg="#FD7E14", bg="#F8F9FA").pack(anchor="w", pady=2)
     ent_scan = tk.Entry(frame, width=35, font=("Segoe UI", 11), bg="#FFFFFF", fg="#000000", relief="groove", bd=2)
     ent_scan.pack(fill="x", ipady=3)
     return ent_scan
