@@ -2,26 +2,30 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from datetime import datetime
 
-# Import subsistem logistik OHTA Precision
+# Import OHTA Precision Logistics Subsystems
 import database_manager as dbm 
 import innerbox_form_ui as ifu
 import form_outer_packing as fop 
 import form_invoice_packing as fip 
 import dashboard_logic as dl
-import main_dashboard_binder as mdb  # Fail pembantu pengurus logik RAM
+import main_dashboard_binder as mdb 
 
-# Bingkai Utama Perisian (Kompak & Ringan)
+# Main Application Window Setup
 root = tk.Tk()
 root.title("OHTA PRECISION - BARCODE & QR CODE GENERATOR")
 root.geometry("700x710+380+10")  
 root.configure(bg="#F1F5F9")
 root.resizable(False, False)
 
-# Setup pangkalan data automatik pada permulaan sistem
+# Initialize local database system on startup
 dbm.siapkan_database()
 
+# 🌟 AUTOMATIC BACKGROUND STARTUP NAS BACKUP: Runs silently 1 second after UI stabilizes
+import dashboard_logic
+root.after(1000, dashboard_logic.laksanakan_auto_backup_NAS)
+
 def laksanakan_shutdown_system_selamat():
-    """🌟 SYSTEM SAFE SHUTDOWN: Memastikan penutupan perisian yang bersih gred industri 🌟"""
+    """🌟 SYSTEM SAFE SHUTDOWN: Ensures clean software closure 🌟"""
     if messagebox.askyesno("CONFIRM SHUTDOWN", "Are you sure you want to securely close and exit the OHTA Precision System?", parent=root):
         try: 
             root.grab_release()
@@ -30,7 +34,7 @@ def laksanakan_shutdown_system_selamat():
         root.quit()
         root.destroy()
 
-# Header Utama Penjenamaan Korporat
+# Main Corporate Branding Header
 tk.Label(root, text="OHTA PRECISION (M) SDN BHD", font=("Segoe UI", 14, "bold"), fg="#1E3A8A", bg="#F1F5F9").pack(pady=(12, 2))
 tk.Label(root, text="AUTOMATED BARCODE & QR CODE GENERATOR", font=("Segoe UI", 9, "bold"), fg="#64748B", bg="#F1F5F9").pack(pady=(0, 6))
 
@@ -55,16 +59,18 @@ tk.Button(frame_control, text="📄 FORM 3: INVOICE LOGS",
 frame_db_row = tk.Frame(frame_control, bg="white")
 frame_db_row.pack(fill="x", pady=(6, 0))
 
-# 🌟 KOREKSI UTAMA: Agihkan tapak saiz lebar bagi ketiga-tiga lajur secara adil dan seimbang! 🌟
 frame_db_row.columnconfigure(0, weight=2)
 frame_db_row.columnconfigure(1, weight=2)
 frame_db_row.columnconfigure(2, weight=1)
 
 btn_db_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
-# Tiga Butang Kawalan Di-gridkan Secara Teratur (Standardized UI Blueprint)
+# Grid Control Rows Setup
 tk.Button(frame_db_row, text="📋 CENTRAL DATABASE PANEL", command=lambda: [dbm.buka_tetingkap_database(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], bg="#DC2626", **btn_db_style).grid(row=0, column=0, padx=(0, 3), sticky="ew")
-tk.Button(frame_db_row, text="💾 BACKUP DB", command=lambda: dl.laksanakan_manual_backup_PC(root), bg="#16A34A", **btn_db_style).grid(row=0, column=1, padx=3, sticky="ew")
+
+# 🌟 FULLY CONVERTED TO GENERATE REPORT BUTTON IN ENGLISH 🌟
+tk.Button(frame_db_row, text="📊 GENERATE REPORT", command=lambda: dl.laksanakan_auto_backup_NAS(root, mod_manual=True), bg="#16A34A", **btn_db_style).grid(row=0, column=1, padx=3, sticky="ew")
+
 tk.Button(frame_db_row, text="🛑 SHUTDOWN", command=laksanakan_shutdown_system_selamat, bg="#374151", **btn_db_style).grid(row=0, column=2, padx=(3, 0), sticky="ew")
 
 # ─── SECTION 2: LIVE PRODUCTION DASHBOARD ───
@@ -77,20 +83,16 @@ frame_nav.pack(fill="x", pady=(2, 6))
 tk.Button(frame_nav, text="◀ PREV DAY", command=mdb.aksi_butang_prev_day, font=("Segoe UI", 9, "bold"), bg="#E2E8F0", fg="#334155", relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT)
 tk.Button(frame_nav, text="NEXT DAY ▶", command=mdb.aksi_butang_next_day, font=("Segoe UI", 9, "bold"), bg="#E2E8F0", fg="#334155", relief="flat", padx=10, cursor="hand2").pack(side=tk.RIGHT)
 
-# True Centering Container
 frame_center_container = tk.Frame(frame_nav, bg="white")
 frame_center_container.pack(expand=True)  
 
 tk.Button(frame_center_container, text="📅 TODAY", command=mdb.aksi_butang_today, font=("Segoe UI", 9, "bold"), bg="#0284C7", fg="white", relief="flat", padx=12, cursor="hand2").pack(side=tk.LEFT, padx=(0, 5))
 
-# Label Paparan Tarikh Kalendar Dashboard
 lbl_tarikh = tk.Label(frame_center_container, text="", font=("Segoe UI", 10, "bold"), fg="#0F172A", bg="white")
 lbl_tarikh.pack(side=tk.LEFT, padx=3)
 
-# Butang REFRESH Real-Time Live Dashboard
 tk.Button(frame_center_container, text="🔄 REFRESH", command=mdb.kemaskini_angka_dashboard_live, font=("Segoe UI", 8, "bold"), bg="#0D9488", fg="white", relief="flat", padx=6, cursor="hand2").pack(side=tk.LEFT, padx=(5, 0))
 
-# Grid Kuantiti Tiga Kotak Putih Dashboard
 frame_grid = tk.Frame(frame_dash, bg="white")
 frame_grid.pack(fill="x", pady=6)
 frame_grid.columnconfigure(0, weight=1)
@@ -110,7 +112,7 @@ box_invoice = tk.Frame(frame_grid, **box_style); box_invoice.grid(row=0, column=
 tk.Label(box_invoice, text="INVOICE SHIPPED", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="white").pack(pady=(10, 2))
 lbl_invoice_val = tk.Label(box_invoice, text="", font=("Segoe UI", 15, "bold"), bg="white"); lbl_invoice_val.pack(pady=(0, 10))
 
-# ─── SECTION 3: RINGKASAN AKTIVITI LOG HARIAN ───
+# ─── SECTION 3: REAL-TIME OPERATION MODULE LOGS ───
 frame_list_box = tk.Frame(frame_dash, bg="white")
 frame_list_box.pack(fill=tk.BOTH, expand=True, pady=(8, 2))
 
@@ -140,10 +142,8 @@ jadual_log_aktiviti.configure(yscrollcommand=sb_list.set)
 jadual_log_aktiviti.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 sb_list.pack(side=tk.RIGHT, fill=tk.Y)
 
-# Pautkan elemen visual ke dalam memori fail binder luaran
+# Connect Visual Elements to Memory References
 mdb.siapkan_rujukan_visual_dashboard(lbl_tarikh, lbl_inner_val, lbl_outer_boxes_val, lbl_invoice_val, jadual_log_aktiviti)
-
-# Jalankan kemas kini pertama kali sebaik sahaja sistem dibuka
 mdb.kemaskini_angka_dashboard_live()
 
 root.mainloop()

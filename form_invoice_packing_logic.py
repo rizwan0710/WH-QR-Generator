@@ -4,11 +4,11 @@ import qrcode
 import os
 import sys
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, filedialog
 from PIL import Image, ImageTk
 import label_invoice_designer as lid
 import invoice_print_manager
-import central_tab_invoice_wizard  # 🌟 SINKRONISASI MUTTAMAD: Memanggil fail wizard pratinjau yang betul
+import central_tab_invoice_wizard  
 
 btn_submit_ref = None
 
@@ -19,49 +19,28 @@ def bersihkan_nama_folder(n):
 def dapatkan_maklumat_outer(s):
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as c: 
-            return c.cursor().execute("SELECT customer, part_no, quantity FROM rekod_qr WHERE sequence_no = ?", (str(s).strip(),)).fetchone()
-    except: 
+            # 🌟 KOREKSI UTAMA 1: Mengupas lapisan list/tuple jika dihantar siri kelompok secara pukal 🌟
+            target_seq = s[0] if isinstance(s, (list, tuple)) and len(s) > 0 else s
+            return c.cursor().execute("SELECT customer, part_no, quantity FROM rekod_qr WHERE sequence_no = ?", (str(target_seq).strip(),)).fetchone()
+    except Exception as e:
+        print(f"Error dapatkan_maklumat_outer: {e}")
         return None
 
 def cetak_qr(target):
-    """🖨️ ENJIN CETAK DIRECT MUTTAMAD (EXTRACTS INDEX FROM TUPLE) 🖨️"""
     try:
-        im = None
-        if isinstance(target, tuple) and len(target) > 0:
-            im = target[0]
-        elif isinstance(target, list) and len(target) > 0:
-            item = target[0]
-            im = item[0] if isinstance(item, tuple) else item
-        else:
-            im = target
-        
-        if im is None or not hasattr(im, "save"):
-            print("Ralat: Gagal mengekstrak objek imej bersih.")
-            return
-
+        im = target if isinstance(target, tuple) else target
+        if im is None or not hasattr(im, "save"): return
         temp = "temp_print_invoice.png"
         im.save(temp)
         if sys.platform == "win32": 
             os.startfile(temp, "print")
     except Exception as e: 
-        print(f"Invoice logic file printing error: {str(e)}")
+        print(f"Printing error: {str(e)}")
 
 def simpan_qr_manual(target, inv):
-    """💾 ENJIN SIMPAN DIRECT MUTTAMAD (EXTRACTS INDEX FROM TUPLE) 💾"""
     try:
-        im = None
-        if isinstance(target, tuple) and len(target) > 0:
-            im = target[0]
-        elif isinstance(target, list) and len(target) > 0:
-            item = target[0]
-            im = item[0] if isinstance(item, tuple) else item
-        else:
-            im = target
-        
-        if im is None or not hasattr(im, "save"):
-            print("Ralat: Gagal mengekstrak imej untuk simpanan.")
-            return
-            
+        im = target if isinstance(target, tuple) else target
+        if im is None or not hasattr(im, "save"): return
         p = filedialog.asksaveasfilename(initialfile=f"INVOICE_{str(inv).replace('/','-')}.png", defaultextension=".png")
         if p: 
             im.convert("RGB").save(p, "PNG")
@@ -70,7 +49,7 @@ def simpan_qr_manual(target, inv):
         print(str(e))
 
 def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
-    """⚡ ENJIN SUBMIT DATA INVOICE OHTA PRECISION WITH AUTOMATIC FOLDER CREATION ⚡"""
+    """⚡ ENJIN SUBMIT DATA INVOICE OHTA PRECISION - REKA BENTUK FORM FIXED ⚡"""
     dt = e_dt.get_date().strftime("%d/%m/%Y") if hasattr(e_dt, 'get_date') else str(e_dt)
     inv, so = e_inv.get().strip().upper(), e_so.get().strip().upper()
     out = [e.get().strip().upper() for e in e_out if e.get().strip()]
@@ -85,27 +64,23 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
     except Exception as e: 
         return messagebox.showerror("ERROR", str(e))
 
+    # 🌟 KOREKSI UTAMA 2: Hantar elemen indeks pertama 'out[0]' (bukan keseluruhan senarai list) supaya SQL lepas semakan! 🌟
     d1 = dapatkan_maklumat_outer(out[0])
     if not d1: 
-        return messagebox.showerror("ERROR", f"Box {out[0]} Not Found!")
+        return messagebox.showerror("ERROR", f"Box {out} Not Found in Database!")
+        
     customer_utama, part_utama, qty_pcs_str = d1
     total_box, sk = len(out), []
     pola = datetime.datetime.now().strftime("%y%m%d")
     
-    # 🌟 STEP 1: AUTOMATIC BACKGROUND DIRECTORY GENERATION LAYER 🌟
-    # Generates a standardized path structural link: INVOICE_STICKER / DATE / CUSTOMER_NAME
     try:
         clean_date_folder = dt.replace("/", "-")
         clean_customer_folder = bersihkan_nama_folder(customer_utama)
-        
-        # Staging the folder path layer string configurations
         target_save_directory = os.path.join("INVOICE_STICKER", clean_date_folder, clean_customer_folder)
-        
         if not os.path.exists(target_save_directory):
             os.makedirs(target_save_directory)
-            
     except Exception as e_folder:
-        print(f"Silent warning: Folder path generation layer skipped - {str(e_folder)}")
+        print(f"Folder skip: {str(e_folder)}")
 
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as cs:
@@ -124,13 +99,12 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
                 cur.execute("INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no) VALUES (?,?,?,?,?,?,?,?,?)",
                             (dt, customer_utama, f"INV:{inv}", f"SO:{so}", f"{qty} PCS", datetime.datetime.now().strftime("%I:%M:%S %p"), c, pg, seq))
                 
-                # FORMAT DATA QR BARU (MUTTAMAD & STRUCTURED)
                 qr_payload = (
-                    f"SN: {seq.strip()}\n"
-                    f"Invoice No: {inv.strip()}\n"
-                    f"SO No: {so.strip()}\n"
-                    f"Customer: {customer_utama.strip()}\n"
-                    f"Qty: {qty} PCS"
+                    f"SERIAL NO : {seq.strip()} "
+                    f"INVOICE NO : {inv.strip()} "
+                    f"SO No : {so.strip()} "
+                    f"CUSTOMER : {customer_utama.strip()} "
+                    f"QUANTITY : {qty} PCS"
                 )
 
                 qr = qrcode.QRCode(version=1, border=1)
@@ -142,9 +116,6 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
                     stk = lid.bina_imej_invoice(img_qr=im_qr, invoice_no=inv, so_no=so, outer_seq=c, outer_qty=f"{qty} PCS", seq_inv_spesifik=seq, text_paging=pg, customer=customer_utama)
                     if stk: 
                         sk.append((stk, pg))
-                        
-                        # 🌟 STEP 2: AUTOMATIC STICKER ASSET AUTO-SAVE SEQUENCE 🌟
-                        # Silently writes the output artifact file straight into the target save directory
                         clean_seq_name = str(seq).strip()
                         clean_page_name = pg.replace("/", "-").replace(" ", "_")
                         file_save_destination = os.path.join(target_save_directory, f"LABEL_{clean_seq_name}_{clean_page_name}.png")
@@ -154,37 +125,40 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
                     return messagebox.showerror("DESIGNER ERROR", str(e_design))
             cs.commit()
             
-        # Standard dynamic batch window load framework launcher sequence 
-        central_tab_invoice_wizard.buka_popup_individual_1by1(win, sk, inv)
-        
+            # 🌟 JALUR AUTOMATIK BACKUP KE NAS SETIAP KALI INVOICE SUBMIT SUKSES 🌟
+            try:
+                import dashboard_logic
+                dashboard_logic.laksanakan_auto_backup_NAS()
+            except:
+                pass
+            
     except Exception as e: 
         messagebox.showerror("DB ERROR", str(e))
+        return
+
+    central_tab_invoice_wizard.buka_popup_individual_1by1(win, sk, inv)
 
 def buka_window_preview_database_nas(win):
-    """⚡ LIVE PREVIEW JADUAL DATABASE NAS ⚡"""
     tp = tk.Toplevel(win)
     tp.title("NAS PREVIEW")
     tp.geometry("820x450")
     tp.grab_set()
-    
     fr = tk.Frame(tp)
     fr.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
     cols = ("ID", "Date", "Customer", "Drawing No", "Part No", "Quantity", "Sequence No")
-    
     tree = ttk.Treeview(fr, columns=cols, show="headings")
     tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    
     for c in cols: 
         tree.heading(c, text=c)
         tree.column(c, width=100, anchor="center")
-        
     sb = ttk.Scrollbar(fr, command=tree.yview)
     tree.configure(yscrollcommand=sb.set)
     sb.pack(side=tk.RIGHT, fill=tk.Y)
-    
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
-            for r in conn.cursor().execute("SELECT id, tarikh, customer, drawing_no, part_no, quantity, sequence_no FROM rekod_qr ORDER BY id DESC LIMIT 100").fetchall(): 
-                tree.insert("", tk.END, values=r)
-    except Exception as e: 
-        messagebox.showerror("ERROR", str(e))
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, tarikh, customer, drawing_no, part_no, quantity, sequence_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' ORDER BY id DESC")
+            for row in cursor.fetchall():
+                tree.insert("", tk.END, values=row)
+    except Exception as e:
+        messagebox.showerror("PREVIEW ERROR", f"Gagal memuatkan data NAS:\n{str(e)}", parent=tp)

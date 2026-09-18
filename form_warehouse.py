@@ -32,7 +32,7 @@ def proses_submit_data_pukal(win_wh, kamus):
                 cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (f"WP{tarikh_pola}%",))
                 max_r = cursor.fetchone()
                 
-                # 🌟 KOREKSI UTAMA TUPLE INDEXING: Mengunci pembacaan rentetan siri 'WP' secara tepat gred industri 🌟
+                # 🌟 KOREKSI UTAMA TUPLE INDEXING 🌟
                 if max_r and max_r[0]:
                     string_siri = str(max_r[0]).strip()
                     bil = int(string_siri[-4:]) + 1
@@ -75,8 +75,6 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     """Enjin meluncur dinamik dengan pengiraan aspek ratio kod QR asli kilang."""
     win = tk.Toplevel(parent)
     win.title("PRODUCTION INNER BATCH STICKER")
-    
-    # 📏 Ketinggian tetingkap diturunkan ke 560 supaya border bawah rapat dengan barisan butang aksi
     win.geometry("540x560+450+30")
     win.configure(bg="#F8F9FA")
     win.grab_set()
@@ -87,7 +85,6 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     lbl = tk.Label(win, text="", font=("Segoe UI", 10, "bold"), fg="#2E7D32", bg="#F8F9FA")
     lbl.pack(pady=8)
     
-    # 🛠️ PERBAIKAN: Menukar expand=True kepada expand=False untuk menyekat bingkai putih memanjang ke bawah
     fr_bg = tk.Frame(win, bg="white", bd=1, relief="groove")
     fr_bg.pack(fill=tk.BOTH, expand=False, padx=30, pady=(0, 5))
     
@@ -97,9 +94,8 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     def kemaskini_selak():
         nonlocal indeks_halaman
         img, seq = senarai_kad[indeks_halaman]
-        lbl.config(text=f"STICKER GENERATED ({seq})  |  BATCH: {indeks_halaman + 1}/{total_label}")
+        lbl.config(text=f"LABEL PREVIEW ({seq})  |  BATCH COUNTER: {indeks_halaman + 1}/{total_label}")
         
-        # 📏 Nisbah ketinggian previu imej diturunkan sedikit agar sepadan dengan tetingkap kompak
         lebar_had, tinggi_had = 340, 350
         img_visual = img.resize((lebar_had, tinggi_had), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(img_visual)
@@ -122,6 +118,22 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
             indeks_halaman += 1
             kemaskini_selak()
 
+    def cetak_semua_pukal():
+        """Menggabungkan kesemua list imej bertingkat ke enjin wizard tunggal Windows."""
+        if messagebox.askyesno("CONFIRMATION", f"Print ALL {total_label} label in ONE window?", parent=win):
+            try:
+                senarai_imej_bersih = []
+                for item in senarai_kad:
+                    if isinstance(item, (list, tuple)) and len(item) > 0:
+                        senarai_imej_bersih.append(item[0])
+                    else:
+                        senarai_imej_bersih.append(item)
+
+                if senarai_imej_bersih:
+                    database_batch_preview.laksanakan_windows_photo_wizard_tunggal(senarai_imej_bersih)
+            except Exception as e_print:
+                messagebox.showerror("PRINT ERROR", f"Gagal memproses cetakan kelompok:\n{str(e_print)}", parent=win)
+
     def simpan_semua_pukal():
         folder_tujuan = filedialog.askdirectory(title="Select Save Folder", parent=win)
         if folder_tujuan:
@@ -133,36 +145,37 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
         img_kad, seq_no = senarai_kad[indeks_halaman]
         ipl.simpan_qr_manual(img_kad, seq_no)
 
-    # Baris Navigasi Selak Halaman (Warna diselaraskan kepada Kelabu Gelap #212529)
+    # ─── 1. BAR NAVIGASI SELAK ───
     fr_nav = tk.Frame(win, bg="#F8F9FA")
-    btn_prev = tk.Button(fr_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#212529", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
-    btn_next = tk.Button(fr_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#212529", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev = tk.Button(fr_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_next = tk.Button(fr_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     
     if total_label > 1: 
         fr_nav.pack(pady=4)
         btn_prev.pack(side=tk.LEFT, padx=8)
         btn_next.pack(side=tk.LEFT, padx=8)
 
-    # Barisan Butang Kawalan Output Bawah Flat Style Seragam (English Labels)
+    # ─── 2. ACTION BAR KAWALAN OUTPUT (IKON & WARNA SERAGAM) ───
     fr_btn = tk.Frame(win, bg="#F8F9FA")
-    # 🔽 Diturunkan kepada margin rapat pady=(0, 10) ke sempadan bawah tingkap
     fr_btn.pack(pady=(0, 10), side=tk.BOTTOM, fill=tk.X, padx=20)
-    b_st = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
+    
+    b_st = {
+        "font": ("Segoe UI", 9, "bold"), 
+        "fg": "white", 
+        "relief": "flat", 
+        "height": 2, 
+        "cursor": "hand2",
+        "padx": 8
+    }
     
     if total_label == 1:
-        # 🟢 PRINT -> Ditukar warna Hijau (#1E7E34)
-        tk.Button(fr_btn, text="🖨️ PRINT ", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        # 🟠 SAVE -> Ditukar warna Oren (#FD7E14)
-        tk.Button(fr_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#FD7E14", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_tunggal_sahaja, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        # 🟢 PRINT CURRENT -> Ditukar warna Hijau (#1E7E34)
-        tk.Button(fr_btn, text="📦 PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        # 🟢 PRINT ALL -> Ditukar warna Hijau (#1E7E34)
-        tk.Button(fr_btn, text="🔥 PRINT ALL", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([k[0] for k in senarai_kad]), bg="#1E7E34", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        # 🟠 SAVE ALL -> Ditukar warna Oren (#FD7E14)
-        tk.Button(fr_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#FD7E14", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        
-    # ⚫ CLOSE -> Ditukar warna Kelabu Gelap (#212529)
-    tk.Button(fr_btn, text="❌ CLOSE", command=win.destroy, bg="#212529", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
-    
+        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#1ABC9C", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_semua_pukal, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=3)
+
     kemaskini_selak()

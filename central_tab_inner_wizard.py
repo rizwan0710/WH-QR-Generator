@@ -34,6 +34,7 @@ def buka_popup_pukal_inner_1by1(item_ditanda, root):
     def kemaskini_paparan_selak():
         if total_label == 0: return
         img_kad, seq_no = senarai_kad_pembungkus[indeks_halaman]
+        # 🌟 DIKEMASKINI: Menyeragamkan format teks header (LABEL PREVIEW) mengikut format Invoice
         lbl_header.config(text=f"LABEL PREVIEW ({seq_no})  |  BATCH COUNTER: {indeks_halaman + 1}/{total_label}")
         
         lebar_had = 310
@@ -79,37 +80,35 @@ def buka_popup_pukal_inner_1by1(item_ditanda, root):
             messagebox.showinfo("SUCCESS", "ALL Label successfully saved!", parent=tingkap_popup)
 
     def simpan_tunggal_sahaja():
-        # 🌟 FIXED: Mengekstrak indeks halaman semasa dengan tepat untuk mengelakkan ralat memori sekat
         img_kad, seq_no = senarai_kad_pembungkus[indeks_halaman]
         ipl.simpan_qr_manual(img_kad, seq_no)
 
     # ─── 1. BAR NAVIGASI (Hanya pack jika data > 1) ───
     frame_nav = tk.Frame(tingkap_popup, bg="#F8F9FA")
-    btn_prev = tk.Button(frame_nav, text="◀ PREVIOUS", command=halaman_ke_kiri, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_prev = tk.Button(frame_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#2C3E50", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_prev.pack(side=tk.LEFT, padx=8)
-    btn_next = tk.Button(frame_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
+    btn_next = tk.Button(frame_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#2C3E50", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_next.pack(side=tk.LEFT, padx=8)
 
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. ACTION BAR KAWALAN FLAT STYLE SERAGAM ───
+    # ─── 2. ACTION BAR KAWALAN FLAT STYLE SERAGAM (INVOICE VERSION) ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
     
     if total_label == 1:
-        # JIKA 1 DATA SAHAJA: Papar 3 butang bersih (Butang Close dijamin keluar)
-        tk.Button(frame_btn, text="🖨️ PRINT ", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[0][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="💾 SAVE ", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+        # 🌟 SERAGAM (1 DATA): Menggunakan kod warna, teks, dan susunan ikon baharu
+        tk.Button(frame_btn, text="📥  PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[0][0]), bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="💾  SAVE ALL", command=simpan_tunggal_sahaja, bg="#E67E22", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="✖  CLOSE", command=tingkap_popup.destroy, bg="#2C3E50", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        # JIKA BANYAK DATA: Papar 5 butang batch
-        tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[indeks_halaman][0]), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="🔥 PRINT ALL", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="💾 SAVE CURRENT", command=simpan_tunggal_sahaja, bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="📦 SAVE ALL", command=simpan_semua_pukal, bg="#EA580C", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
+        # 🌟 SERAGAM (BANYAK DATA): Diselaraskan tepat mengikut barisan 4 butang utama Invoice Panel
+        tk.Button(frame_btn, text="📥  PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[indeks_halaman][0]), bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="📥  PRINT ALL", command=cetak_semua_pukal, bg="#27AE60", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="💾  SAVE ALL", command=simpan_semua_pukal, bg="#E67E22", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="✖  CLOSE", command=tingkap_popup.destroy, bg="#2C3E50", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()

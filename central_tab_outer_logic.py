@@ -1,6 +1,6 @@
 import sqlite3, csv, qrcode, re, os
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 import label_outer_designer as lod
 import database_batch_preview
 
@@ -52,7 +52,6 @@ def carian_outer(jadual, entry_search):
             if not teks:
                 cursor.execute(base + " ORDER BY id DESC")
             else:
-                # 🛠️ PENAMBAHBAIKAN: Menambah tapisan 'machine LIKE ?' untuk membolehkan carian siri Inner Sequence (WP...)
                 query_penapis = base + " AND (sequence_no LIKE ? OR customer LIKE ? OR machine LIKE ?) ORDER BY id DESC"
                 cursor.execute(query_penapis, (f"%{teks}%", f"%{teks}%", f"%{teks}%"))
                 
@@ -123,3 +122,50 @@ def eksport_outer_excel():
     except Exception as e: messagebox.showerror("ERROR", str(e))
 
 def susun_lajur_treeview(jadual, lajur, menaik): pass
+
+# 🌟 🟢 PENYATUAN STRUKTUR PENGURUS UI TAB DATABASE YANG HILANG 🌟
+def bina_tab_outer(f_tb, f_tp, win, gate_pratonton_seragam, fungsi_padam):
+    """Membina elemen susunan visual grid jadual tab Outer di dalam notebook panel."""
+    # Top Control Panel
+    tk.Label(f_tp, text="Search Outer:", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=5)
+    e_s = tk.Entry(f_tp, width=22, font=("Segoe UI", 10))
+    e_s.pack(side=tk.LEFT, padx=5)
+    
+    # Ikatan kekunci pintas Enter untuk mulakan carian
+    e_s.bind("<Return>", lambda e: carian_outer(jad_out, e_s))
+    
+    tk.Button(f_tp, text="SEARCH", command=lambda: carian_outer(jad_out, e_s), bg="#007BFF", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.LEFT, padx=2)
+    tk.Button(f_tp, text="RESET", command=lambda: [e_s.delete(0, tk.END), carian_outer(jad_out, e_s)], bg="#6C757D", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.LEFT, padx=2)
+    tk.Button(f_tp, text="PREVIEW SELECTED", command=lambda: gate_pratonton_seragam(jad_out, win, is_outer=True), bg="#28A745", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.LEFT, padx=2)
+    tk.Button(f_tp, text="DELETE SELECTED", command=lambda: fungsi_padam(jad_out, e_s), bg="#DC3545", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.LEFT, padx=2)
+    tk.Button(f_tp, text="EXPORT CSV", command=eksport_outer_excel, bg="#343A40", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.LEFT, padx=2)
+    tk.Button(f_tp, text="REFRESH", command=lambda: carian_outer(jad_out, e_s), bg="#17A2B8", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.RIGHT, padx=2)
+    tk.Button(f_tp, text="◀ BACK TO MAIN", command=win.destroy, bg="#6C757D", fg="white", font=("Segoe UI", 8, "bold"), padx=10).pack(side=tk.RIGHT, padx=2)
+
+    # Grid Jadual Data Treeview
+    kolums = ("Select", "ID", "Date", "Customer", "Quantity", "Box Type", "Linked Inners", "Module", "Sequence No")
+    jad_out = ttk.Treeview(f_tb, columns=kolums, show="headings", selectmode="extended")
+    jad_out.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+    # Penggayaan saiz lebar kolum
+    lebar_lajur = {"Select": 45, "ID": 50, "Date": 85, "Customer": 160, "Quantity": 90, "Box Type": 90, "Linked Inners": 150, "Module": 85, "Sequence No": 110}
+    for col in kolums:
+        jad_out.heading(col, text=col)
+        jad_out.column(col, width=lebar_lajur.get(col, 100), anchor="center" if col != "Customer" else "w")
+        
+    sb = ttk.Scrollbar(f_tb, orient=tk.VERTICAL, command=jad_out.yview)
+    jad_out.configure(yscrollcommand=sb.set)
+    sb.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    # Pautan aksi tetikus (Events binding)
+    jad_out.bind("<Button-1>", lambda e: on_outer_click(e, jad_out))
+    jad_out.bind("<Motion>", lambda e: on_mouse_hover(e, jad_out))
+    jad_out.bind("<Leave>", lambda e: on_mouse_leave(e, jad_out))
+    
+    # Penggayaan warna tag baris grid
+    jad_out.tag_configure('normal', background='white')
+    jad_out.tag_configure('checked', background='#E2F0D9')
+    jad_out.tag_configure('hover', background='#F2F2F2')
+    
+    # Jalankan carian data automatik semasa tetingkap pertama kali dibuka
+    carian_outer(jad_out, e_s)
