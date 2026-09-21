@@ -6,12 +6,20 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import label_invoice_designer as lid
 import invoice_preview_window
+import database_manager as dbm  # 🌟 CONNECTS TO THE AUTO-CLEAN REFRESH ENGINE 🌟
 
 baris_hover_terakhir = None
 
 def carian_invoice(jadual, entry_search):
-    """🌟 LIVE INVOICE REFRESH FIX: Membaca kuantiti murni terkini terus dari SQLite 🌟"""
-    teks_carian = entry_search.get().strip().upper()
+    """🌟 LIVE INVOICE REFRESH FIX: Automatically deletes orphaned database links on refresh 🌟"""
+    # 🌟 AUTOMATED CADENCE: Purges broken transaction records instantly when the user clicks REFRESH 🌟
+    dbm.laksanakan_auto_clean_orphaned_logs()
+
+    try:
+        teks_carian = entry_search.get().strip().upper()
+    except tk.TclError:
+        return
+        
     for item in jadual.get_children():
         jadual.delete(item)
         
@@ -182,10 +190,10 @@ def eksport_invoice_excel():
             cursor = conn.cursor()
             cursor.execute("SELECT id, sequence_no, tarikh, drawing_no, part_no, quantity, machine, lotcard_no, customer FROM rekod_qr WHERE sequence_no LIKE 'INV%' ORDER BY id DESC")
             rows = cursor.fetchall()
-            with open(p, mode="w", newline="", encoding="utf-8") as f:
+            with open(p, mode="w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
-                writer.writerow(["ID", "Sequence No", "Date", "Drawing No", "Part No", "Quantity", "Machine/Outer", "Page Status", "Customer"])
+                writer.writerow(["ID", "Sequence No", "Date", "Invoice No", "SO No", "Quantity", "Linked Outer Box", "Page Status", "Customer"])
                 writer.writerows(rows)
-        messagebox.showinfo("SUCCESS", "Invoice logs exported successfully!")
+            messagebox.showinfo("SUCCESS", "Invoice report exported successfully!")
     except Exception as e:
-        messagebox.showerror("EXPORT ERROR", str(e))
+        messagebox.showerror("SYSTEM ERROR", str(e))

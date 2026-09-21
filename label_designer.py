@@ -1,91 +1,91 @@
+import os
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
-def bina_imej_gabungan(img_qr, tarikh, drawing, part, qty, mfg, mac, sequence_no, customer):
-    """ENGINE PEREKA GRAFIK INNER BOX (PERFECT SYMMETRIC EDITION)"""
-    lebar_kad, tinggi_kad = 380, 385  
-    imej_kanvas = Image.new("RGB", (lebar_kad, tinggi_kad), "white")
-    lukis = ImageDraw.Draw(imej_kanvas)
-    
-    # Sediakan pembersihan nama customer siap-siap
-    text_customer = str(customer).upper().strip()
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def bina_imej_gabungan(img_qr_mentah, tarikh, drawing, part, qty, mfg, mac, seq_no, customer, lot_no=""):
+    """
+    🖼️ EXECUTIVE LABEL DESIGNER ENGINE (DYNAMIC AUTO-CENTER FOOTER FIX) 🖼️
+    - Enlarges canvas height to 430px for maximum structural padding.
+    - Centers the factory signature label dynamically using draw.textlength().
+    """
+    lebar_canvas = 420
+    tinggi_canvas = 430
+    canvas = Image.new("RGB", (lebar_canvas, tinggi_canvas), "white")
+    draw = ImageDraw.Draw(canvas)
     
     try:
-        font_regular = ImageFont.truetype("arial.ttf", 12)
-        font_bold    = ImageFont.truetype("arialbd.ttf", 12)
-        font_footer  = ImageFont.truetype("arialbd.ttf", 11)
-        font_serial  = ImageFont.truetype("arialbd.ttf", 11)
+        font_path_bold = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "segoeuib.ttf")
+        font_path_reg = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "segoeui.ttf")
         
-        # 🟢 PENGKONDISIAN HURUF AGRESIF (FIX OVERFLOW)
-        saiz_font_header = 15  # Saiz default asal abang
-        panjang_nama = len(text_customer)
+        font_title = ImageFont.truetype(font_path_bold, 14)
+        font_sub_bold = ImageFont.truetype(font_path_bold, 11)
+        font_sub_reg = ImageFont.truetype(font_path_reg, 11)
         
-        if panjang_nama > 35:
-            saiz_font_header = 10  # Nama terlampau panjang (Macam BEIJING SIEMENS CERBERUS)
-        elif panjang_nama > 28:
-            saiz_font_header = 11  # Nama sederhana panjang
-        elif panjang_nama > 22:
-            saiz_font_header = 13  # Kecilkan sikit sahaja
-            
-        font_header = ImageFont.truetype("arialbd.ttf", saiz_font_header)
+        font_rohs_large = ImageFont.truetype(font_path_reg, 13)       
+        font_company_large = ImageFont.truetype(font_path_bold, 12)   
+    except:
+        font_title = font_sub_bold = font_sub_reg = font_rohs_large = font_company_large = ImageFont.load_default()
+
+    # Meluaskan dimensi sempadan kotak luar mengikut saiz kanvas baharu
+    draw.rectangle([(15, 15), (lebar_canvas - 15, tinggi_canvas - 15)], outline="black", width=2)
+    
+    # Tajuk Utama Pendaftaran Syarikat Customer
+    draw.text((25, 23), str(customer).upper().strip(), fill="black", font=font_title)
+    draw.line([(15, 45), (lebar_canvas - 15, 45)], fill="black", width=2)
+    
+    def lukis_baris_jadual(y_atas, y_bawah, tajuk_lajur, nilai_lajur):
+        draw.line([(15, y_bawah), (lebar_canvas - 15, y_bawah)], fill="black", width=1)
+        draw.line([(135, y_atas), (135, y_bawah)], fill="black", width=1)
+        draw.text((25, y_atas + 5), str(tajuk_lajur), fill="black", font=font_sub_bold)
+        draw.text((145, y_atas + 5), str(nilai_lajur).strip(), fill="black", font=font_sub_reg)
+
+    lukis_baris_jadual(45, 73, "Pack Date", tarikh)
+    lukis_baris_jadual(73, 101, "Drawing No", drawing)
+    lukis_baris_jadual(101, 129, "Part Number", part)
+    lukis_baris_jadual(129, 157, "Quantity", f"{str(qty).upper().replace('PCS','').strip()} PCS")
+    lukis_baris_jadual(157, 185, "Machine", mac)
+    
+    # Integrasi Grafik Kod QR Dinamik
+    if img_qr_mentah:
+        img_qr_resized = img_qr_mentah.resize((125, 120), Image.Resampling.LANCZOS)
+        canvas.paste(img_qr_resized, (25, 200))
         
-    except (IOError, TypeError):
-        font_regular = ImageFont.load_default()
-        font_bold    = ImageFont.load_default()
-        font_header  = ImageFont.load_default()
-        font_footer  = ImageFont.load_default()
-        font_serial  = ImageFont.load_default()
-        saiz_font_header = 15
-
-
-    lukis.rectangle([15, 15, lebar_kad-15, tinggi_kad-15], outline="black", width=2)
+    # Penulisan Blok Serial No & Data Lot No (Sisi kanan Kod QR)
+    draw.text((170, 215), "Serial No:", fill="black", font=font_sub_bold)
+    draw.text((170, 230), str(seq_no).strip().upper(), fill="black", font=font_sub_reg)
     
-    lukis.text((25, 23), str(customer).upper().strip(), fill="black", font=font_header)
-    lukis.line([15, 45, lebar_kad-15, 45], fill="black", width=2)
+    draw.text((170, 255), "Lot No:", fill="black", font=font_sub_bold)
+    draw.text((170, 270), str(lot_no).strip().upper() if (lot_no and str(lot_no).strip().upper() != "NONE") else "N/A", fill="black", font=font_sub_reg)
     
-    lajur_pembahagi_x = 125
-    senarai_data = [
-        ("Date", str(tarikh)),
-        ("Drawing No", str(drawing)),
-        ("Part Number", str(part)),
-        ("Quantity", str(qty)),
-        ("Machine", str(mac))
-    ]
+    # =========================================================================
+    # 🌟 BAHAGIAN FOOTER: DIBAIKI KEDUDUKAN DYNAMIC AUTO-CENTER 🌟
+    # =========================================================================
+    # Garisan ROHS diletakkan pada Y: 340
+    draw.line([(15, 340), (lebar_canvas - 15, 340)], fill="black", width=1)
+    draw.text((25, 348), "Complied With ROHS", fill="black", font=font_rohs_large)
     
-    y_semasa = 45
-    for tajuk, nilai in senarai_data:
-        lukis.line([15, y_semasa+28, lebar_kad-15, y_semasa+28], fill="black", width=1)
-        lukis.text((25, y_semasa+7), tajuk, fill="black", font=font_bold)
-        lukis.line([lajur_pembahagi_x, y_semasa, lajur_pembahagi_x, y_semasa+28], fill="black", width=1)
-        lukis.text((lajur_pembahagi_x+10, y_semasa+7), nilai.upper().strip(), fill="black", font=font_regular)
-        y_semasa += 28
-
-    lukis.line([15, y_semasa, lebar_kad-15, y_semasa], fill="black", width=2)
-
-    gap_atas_bawah = 15
-    pos_qr_y = y_semasa + gap_atas_bawah
+    # Garisan penutup bawah ditolak ke Y: 380 (Memberikan ruang tinggi baris sebanyak 40px!)
+    draw.line([(15, 380), (lebar_canvas - 15, 380)], fill="black", width=2)
     
-    img_qr_resized = img_qr.resize((105, 105))
-    imej_kanvas.paste(img_qr_resized, (25, pos_qr_y))
+    # 🌟 KOREKSI UTAMA: Kira kelebaran tulisan teks secara dinamik untuk center murni 🌟
+    teks_company = "OHTA PRECISION (M) SDN BHD"
     
-    pos_teks_qr_y = pos_qr_y + 35
-    lukis.text((145, pos_teks_qr_y), "Serial No:", fill="black", font=font_regular)
-    lukis.text((145, pos_teks_qr_y+16), str(sequence_no).upper().strip(), fill="black", font=font_serial)
-
-    y_rohs_start = pos_qr_y + 105 + gap_atas_bawah
-    
-    lukis.line([15, y_rohs_start, lebar_kad-15, y_rohs_start], fill="black", width=1)
-    lukis.text((25, y_rohs_start+6), "Complied With ROHS", fill="black", font=font_regular)
-    
-    y_company_start = y_rohs_start + 26
-    lukis.line([15, y_company_start, lebar_kad-15, y_company_start], fill="black", width=1)
-    
-    teks_kilang = "OHTA PRECISION (M) SDN BHD"
     try:
-        lebar_teks_kilang = lukis.textlength(teks_kilang, font=font_footer)
+        # Gunakan textlength() jika disokong oleh Pillow versi baru anda
+        lebar_teks = draw.textlength(teks_company, font=font_company_large)
     except AttributeError:
-        lebar_teks_kilang = lukis.textsize(teks_kilang, font=font_footer)[0] if hasattr(lukis, 'textsize') else 180
+        # Fallback sekiranya menggunakan Pillow versi lama
+        lebar_teks = draw.textsize(teks_company, font=font_company_large)[0] if hasattr(draw, 'textsize') else 200
         
-    pos_x_center = (lebar_kad - lebar_teks_kilang) // 2
-    lukis.text((pos_x_center, y_company_start+6), teks_kilang, fill="black", font=font_footer)
+    # Formula tengah: (Jumlah lebar canvas - lebar teks tulisan) dibahagi 2
+    koordinat_x_center = int((lebar_canvas - lebar_teks) / 2)
     
-    return imej_kanvas
+    # Cetak nama syarikat tepat di posisi tengah-tengah kotak (Y: 393) secara seimbang!
+    draw.text((koordinat_x_center, 393), teks_company, fill="black", font=font_company_large)
+    
+    return canvas

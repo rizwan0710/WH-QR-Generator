@@ -2,6 +2,7 @@ import sqlite3
 import os
 import shutil
 import threading
+import socket
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -17,7 +18,6 @@ def dapatkan_statistik_dashboard_harian(tarikh_obj):
         with sqlite3.connect(db_path, timeout=10) as conn:
             cursor = conn.cursor()
             
-            # 🌟 KOREKSI UTAMA: Ditambah indeks [0] di hujung fetchone() untuk mengekstrak hanya nilai integer bersih dari tuple!
             cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'WP%'", (tarikh_sempang, tarikh_condong))
             r_in = cursor.fetchone()
             stats["inner_stickers"] = r_in[0] if (r_in and r_in[0] is not None) else 0
@@ -63,19 +63,34 @@ def laksanakan_auto_backup_NAS(parent_win=None, mod_manual=False):
         t.start()
 
 def _proses_salinan_fizikal_nas_silent():
-    LALUAN_NAS_SERVER = r"Z:\IT\IT\QR_SYS_Backup(DB)"
+    # 🌟 TARGET YOUR EXACT MAPPED DRIVE NETWORK DIRECTORY 🌟
+    LALUAN_NAS_SERVER_ROOT = r"Z:\IT\IT\QR_SYS_Backup(DB)"
     db_asal = "warehouse_data.db"
     if not os.path.exists(db_asal): return
     try:
-        if not os.path.exists(LALUAN_NAS_SERVER): os.makedirs(LALUAN_NAS_SERVER)
+        try:
+            computer_name = socket.gethostname().upper().replace(" ", "_")
+        except Exception:
+            computer_name = "UNKNOWN_STATION"
+            
+        pc_specific_backup_dir = os.path.join(LALUAN_NAS_SERVER_ROOT, computer_name)
+        if not os.path.exists(pc_specific_backup_dir): 
+            os.makedirs(pc_specific_backup_dir, exist_ok=True)
+            
         tarikh_hari_ini = datetime.now().strftime("%Y-%m-%d")
-        nama_backup_nas = f"QR System Backup DB_{tarikh_hari_ini}.db"
-        shutil.copy(db_asal, os.path.join(LALUAN_NAS_SERVER, nama_backup_nas))
         
-        nama_excel_nas = f"LAPORAN_STICKER_QR_{tarikh_hari_ini}.xlsx"
-        excel_generator.jana_laporan_excel_tiga_tab(db_asal, os.path.join(LALUAN_NAS_SERVER, nama_excel_nas))
-        _laksanakan_auto_clean_fail_lama_nas(LALUAN_NAS_SERVER)
-    except: pass
+        # 1. Save standard physical .db copy inside your host network folder
+        nama_backup_nas = f"QR_System_Backup_DB_{computer_name}_{tarikh_hari_ini}.db"
+        shutil.copy(db_asal, os.path.join(pc_specific_backup_dir, nama_backup_nas))
+        
+        # 2. Save identical non-system corporate spreadsheet version updated live
+        nama_excel_nas = f"LIVE_WAREHOUSE_REPORT_{computer_name}.xlsx"
+        excel_generator.jana_laporan_excel_tiga_tab(db_asal, os.path.join(pc_specific_backup_dir, nama_excel_nas))
+        
+        # 3. Fire the automatic 30-day data retention cycle cleanup loop
+        _laksanakan_auto_clean_fail_lama_nas(pc_specific_backup_dir)
+    except: 
+        pass
 
 def _proses_generate_report_manual_save_as(parent_win):
     """Launches the native Windows File Explorer to let users choose their custom export directory."""
@@ -83,7 +98,7 @@ def _proses_generate_report_manual_save_as(parent_win):
     if not os.path.exists(db_asal):
         return messagebox.showerror("ERROR", "Local Database file not found!", parent=parent_win)
         
-    tarikh_hari_ini = datetime.now().strftime("%Y-%m-%d")
+    tarikh_hari_ini = datetime.now().strftime("%Y%m%d_%H%M%S")
     nama_fail_cadangan = f"COMPILATION_LOGISTICS_REPORT_{tarikh_hari_ini}.xlsx"
     
     path_pilihan_user = filedialog.asksaveasfilename(
@@ -113,7 +128,9 @@ def _laksanakan_auto_clean_fail_lama_nas(folder_nas):
     try:
         had_masa = datetime.now() - timedelta(days=30)
         for nama_fail in os.listdir(folder_nas):
-            if (nama_fail.startswith("QR System Backup DB_") or nama_fail.startswith("LAPORAN_STICKER_QR_")) and (nama_fail.endswith(".db") or nama_fail.endswith(".xlsx") or nama_fail.endswith(".csv")):
+            if (nama_fail.startswith("QR_System_Backup_DB_") or nama_fail.startswith("LIVE_WAREHOUSE_REPORT_")) and (nama_fail.endswith(".db") or nama_fail.endswith(".xlsx") or nama_fail.endswith(".csv")):
                 laluan = os.path.join(folder_nas, nama_fail)
-                if datetime.fromtimestamp(os.path.getmtime(laluan)) < had_masa: os.remove(laluan)
-    except: pass
+                if datetime.fromtimestamp(os.path.getmtime(laluan)) < had_masa: 
+                    os.remove(laluan)
+    except: 
+        pass

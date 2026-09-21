@@ -128,12 +128,29 @@ def bina_menu_paste_search_global(event, entry_widget, root):
     menu_paste.post(event.x_root, event.y_root)
 
 def jana_grafik_label_dari_row(r):
-    tarikh, customer, drawing, part, qty, mfg, mac, seq_no = str(r[2]), str(r[3]), str(r[4]), str(r[5]), str(r[6]), str(r[7]), str(r[8]), str(r[10])
+    """
+    🌟 FIXED COLUMN LINKING ENGINE: Pulls exact database rows for image compilation 🌟
+    Maps 'Lotcard No' from Treeview row index 9 to display it properly on the printed sticker.
+    """
+    tarikh   = str(r[2])
+    customer = str(r[3])
+    drawing  = str(r[4])
+    part     = str(r[5])
+    qty      = str(r[6])
+    mfg      = str(r[7])
+    mac      = str(r[8])
+    
+    # 🌟 DIBAIKI: Mengambil nilai lajur Lotcard No (indeks ke-9) dan Sequence No (indeks ke-10) 🌟
+    lot_no   = str(r[9]).strip()
+    seq_no   = str(r[10]).strip()
+    
     qr = qrcode.QRCode(version=1, box_size=10, border=1)
     qr.add_data(seq_no)
     qr.make(fit=True)
     img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    return ld.bina_imej_gabungan(img_qr_mentah, tarikh, drawing, part, qty, mfg, mac, seq_no, customer), seq_no
+    
+    # Hantar pembolehubah lot_no yang mengandungi data Lotcard No murni ke enjin label designer
+    return ld.bina_imej_gabungan(img_qr_mentah, tarikh, drawing, part, qty, mfg, mac, seq_no, customer, lot_no), seq_no
 
 def eksport_inner_excel():
     try:

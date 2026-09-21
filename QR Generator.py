@@ -1,3 +1,6 @@
+import os
+import sys
+import socket
 import tkinter as tk
 from tkinter import messagebox, ttk
 from datetime import datetime
@@ -7,25 +10,44 @@ import database_manager as dbm
 import innerbox_form_ui as ifu
 import form_outer_packing as fop 
 import form_invoice_packing as fip 
-import dashboard_logic as dl
 import main_dashboard_binder as mdb 
 
-# Main Application Window Setup
+# 1. LOCAL DYNAMIC ENVIRONMENT PATH RESOLUTION
+if getattr(sys, 'frozen', False):
+    # Running compiled inside a PyInstaller standalone .exe bundle
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # Running natively from Python source script files environment
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Fetch current hostname profile to map network subfolders dynamically
+try:
+    COMPUTER_NAME = socket.gethostname().upper().replace(" ", "_")
+except Exception:
+    COMPUTER_NAME = "UNKNOWN_STATION"
+
+# Main Application Window Structural Canvas Configuration
 root = tk.Tk()
-root.title("OHTA PRECISION - BARCODE & QR CODE GENERATOR")
+root.title(f"OHTA PRECISION - BARCODE & QR CODE GENERATOR [{COMPUTER_NAME}]")
 root.geometry("700x710+380+10")  
 root.configure(bg="#F1F5F9")
 root.resizable(False, False)
 
-# Initialize local database system on startup
+# Initialize local dynamic isolated database system arrays on startup
 dbm.siapkan_database()
 
-# 🌟 AUTOMATIC BACKGROUND STARTUP NAS BACKUP: Runs silently 1 second after UI stabilizes
-import dashboard_logic
-root.after(1000, dashboard_logic.laksanakan_auto_backup_NAS)
+# AUTOMATIC BACKGROUND STARTUP NAS BACKUP: Runs safely 1 second after UI stabilizes
+def trigger_startup_backup():
+    try:
+        import nas_backup_manager
+        nas_backup_manager.laksanakan_backup_ke_nas_async()
+    except Exception as e:
+        print(f"[STARTUP SYNC NOTICE] System bypassed automated check routine: {e}")
+
+root.after(1000, trigger_startup_backup)
 
 def laksanakan_shutdown_system_selamat():
-    """🌟 SYSTEM SAFE SHUTDOWN: Ensures clean software closure 🌟"""
+    """SYSTEM SAFE SHUTDOWN: Ensures clean operational software closure actions."""
     if messagebox.askyesno("CONFIRM SHUTDOWN", "Are you sure you want to securely close and exit the OHTA Precision System?", parent=root):
         try: 
             root.grab_release()
@@ -34,11 +56,20 @@ def laksanakan_shutdown_system_selamat():
         root.quit()
         root.destroy()
 
-# Main Corporate Branding Header
-tk.Label(root, text="OHTA PRECISION (M) SDN BHD", font=("Segoe UI", 14, "bold"), fg="#1E3A8A", bg="#F1F5F9").pack(pady=(12, 2))
-tk.Label(root, text="AUTOMATED BARCODE & QR CODE GENERATOR", font=("Segoe UI", 9, "bold"), fg="#64748B", bg="#F1F5F9").pack(pady=(0, 6))
+def handle_manual_report_generation():
+    """Triggers an interactive Windows Save Dialog to let the user select where to store the data log spreadsheet."""
+    try:
+        import excel_generator
+        # Calls the updated module that triggers the native Windows file dialogue prompt window
+        excel_generator.jana_laporan_excel_tiga_tab(dbm.DATABASE_PATH)
+    except Exception as e:
+        messagebox.showerror("Export Failed", f"System reporting engine encountered an operation error context: {str(e)}", parent=root)
 
-# ─── SECTION 1: OPERATIONAL FORM CONTROL ───
+# Main Corporate Branding Header Panel
+tk.Label(root, text="OHTA PRECISION (M) SDN BHD", font=("Segoe UI", 14, "bold"), fg="#1E3A8A", bg="#F1F5F9").pack(pady=(12, 2))
+tk.Label(root, text=f"AUTOMATED BARCODE & QR CODE GENERATOR - STATION: {COMPUTER_NAME}", font=("Segoe UI", 9, "bold"), fg="#64748B", bg="#F1F5F9").pack(pady=(0, 6))
+
+# ─── SECTION 1: OPERATIONAL FORM CONTROL PANEL ───
 frame_control = tk.LabelFrame(root, text=" OPERATIONAL FORM CONTROL ", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="white", padx=20, pady=8)
 frame_control.pack(fill="x", padx=25, pady=4)
 
@@ -65,15 +96,15 @@ frame_db_row.columnconfigure(2, weight=1)
 
 btn_db_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
-# Grid Control Rows Setup
+# Grid Control Rows Setup Management
 tk.Button(frame_db_row, text="📋 CENTRAL DATABASE PANEL", command=lambda: [dbm.buka_tetingkap_database(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], bg="#DC2626", **btn_db_style).grid(row=0, column=0, padx=(0, 3), sticky="ew")
 
-# 🌟 FULLY CONVERTED TO GENERATE REPORT BUTTON IN ENGLISH 🌟
-tk.Button(frame_db_row, text="📊 GENERATE REPORT", command=lambda: dl.laksanakan_auto_backup_NAS(root, mod_manual=True), bg="#16A34A", **btn_db_style).grid(row=0, column=1, padx=3, sticky="ew")
+# INTERACTIVE GENERATE REPORT CONTROL BUTTON
+tk.Button(frame_db_row, text="📊 GENERATE REPORT", command=handle_manual_report_generation, bg="#16A34A", **btn_db_style).grid(row=0, column=1, padx=3, sticky="ew")
 
 tk.Button(frame_db_row, text="🛑 SHUTDOWN", command=laksanakan_shutdown_system_selamat, bg="#374151", **btn_db_style).grid(row=0, column=2, padx=(3, 0), sticky="ew")
 
-# ─── SECTION 2: LIVE PRODUCTION DASHBOARD ───
+# ─── SECTION 2: LIVE PRODUCTION SUMMARY METRICS DASHBOARD ───
 frame_dash = tk.LabelFrame(root, text=" LIVE PRODUCTION DASHBOARD ", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="white", padx=20, pady=8)
 frame_dash.pack(fill="both", expand=True, padx=25, pady=(4, 15))
 
@@ -112,7 +143,7 @@ box_invoice = tk.Frame(frame_grid, **box_style); box_invoice.grid(row=0, column=
 tk.Label(box_invoice, text="INVOICE SHIPPED", font=("Segoe UI", 8, "bold"), fg="#64748B", bg="white").pack(pady=(10, 2))
 lbl_invoice_val = tk.Label(box_invoice, text="", font=("Segoe UI", 15, "bold"), bg="white"); lbl_invoice_val.pack(pady=(0, 10))
 
-# ─── SECTION 3: REAL-TIME OPERATION MODULE LOGS ───
+# ─── SECTION 3: REAL-TIME OPERATION LOGS CHRONOLOGY SUMMARY ───
 frame_list_box = tk.Frame(frame_dash, bg="white")
 frame_list_box.pack(fill=tk.BOTH, expand=True, pady=(8, 2))
 
@@ -142,8 +173,9 @@ jadual_log_aktiviti.configure(yscrollcommand=sb_list.set)
 jadual_log_aktiviti.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 sb_list.pack(side=tk.RIGHT, fill=tk.Y)
 
-# Connect Visual Elements to Memory References
+# Map visual panel elements reference pointers safely into binder modules memory
 mdb.siapkan_rujukan_visual_dashboard(lbl_tarikh, lbl_inner_val, lbl_outer_boxes_val, lbl_invoice_val, jadual_log_aktiviti)
 mdb.kemaskini_angka_dashboard_live()
 
-root.mainloop()
+if __name__ == "__main__":
+    root.mainloop()
