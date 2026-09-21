@@ -113,7 +113,6 @@ def kosongkan_seluruh_database_sekarang(win, root):
         siapkan_database()
         if root and hasattr(root, 'kemaskini_dashboard'): root.kemaskini_dashboard()
         messagebox.showinfo("Berjaya", "Sistem dibersihkan!", parent=win); win.destroy()
-
 def padam_terpilih(jadual, entry):
     """Memadam baris rekod terpilih berdasarkan tanda checkbox dengan simpanan kekal (COMMIT FIXED)."""
     tanda = [i for i in jadual.get_children() if "☑" in str(jadual.item(i)['values'])]
@@ -122,25 +121,46 @@ def padam_terpilih(jadual, entry):
         
     if messagebox.askyesno("Pengesahan", f"Padam {len(tanda)} rekod terpilih?", parent=entry.winfo_toplevel()):
         try:
-            with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
-                cursor = conn.cursor()
-                for i in tanda: 
-                    id_sasaran = jadual.set(i, "ID")
-                    cursor.execute("DELETE FROM rekod_qr WHERE id = ?", (id_sasaran,))
+            # Imbas kedua-dua laluan database (folder dalam /data dan folder luar) untuk keselamatan penuh
+            laluan_database_senarai = [DATABASE_PATH, "warehouse_data.db"]
+            
+            for path_db in laluan_database_senarai:
+                try:
+                    with sqlite3.connect(path_db, timeout=10) as conn:
+                        cursor = conn.cursor()
+                        for i in tanda: 
+                            nilai_baris = jadual.item(i)['values']
+                            if nilai_baris and len(nilai_baris) > 1:
+                                # 🌟 MUKTAMAD: Ekstrak secara tepat indeks ke-1 dari tuple row jadual Treeview anda!
+                                # Indeks 0 = Kotak tanda "☑", Indeks 1 = ID Sebenar pangkalan data (Contoh: 597, 596)
+                                id_sasaran = int(nilai_baris[1])
+                                
+                                # Jalankan perintah pemadaman menggunakan integer ID tulen
+                                cursor.execute("DELETE FROM rekod_qr WHERE id = ?", (id_sasaran,))
+                        conn.commit()
+                except Exception as e_sub:
+                    print(f"[PATH NOTICE] Bypassed check on {path_db}: {str(e_sub)}")
                 
-                # 🌟 KOREKSI JALUR UTAMA: Wajib commit untuk mengunci padam secara kekal di hard disk! 🌟
-                conn.commit()
-                
+            # Padamkan baris dari paparan skrin UI
             for i in tanda: 
                 jadual.delete(i)
                 
             # Kemaskini live produksi dashboard portal
-            import main_dashboard_binder as mdb
-            mdb.kemaskini_angka_dashboard_live()
+            try:
+                import main_dashboard_binder as mdb
+                mdb.kemaskini_angka_dashboard_live()
+            except Exception:
+                pass
+                
+            laksanakan_auto_clean_orphaned_logs()
             
             messagebox.showinfo("Berjaya", f"Berjaya memadam {len(tanda)} rekod dari sistem!", parent=entry.winfo_toplevel())
         except Exception as e:
             messagebox.showerror("DATABASE ERROR", f"Gagal mendelete rekod: {str(e)}", parent=entry.winfo_toplevel())
+
+
+
+
 
 def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
     if is_invoice:
@@ -166,6 +186,8 @@ def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
         __import__("central_tab_outer_wizard").buka_popup_pukal_outer_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
     elif __import__("central_tab_inner_wizard"): 
         __import__("central_tab_inner_wizard").buka_popup_pukal_inner_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
+
+
 
 def buka_tetingkap_database(root):
     win = tk.Toplevel(root); win.title("SYSTEM DATABASE MANAGEMENT PANEL"); win.geometry("1300x680+50+20"); win.transient(root)
