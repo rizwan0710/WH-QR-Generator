@@ -2,6 +2,7 @@ import sqlite3
 import csv
 import os
 import qrcode
+import re
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
 from PIL import Image, ImageTk
@@ -60,7 +61,6 @@ def carian_inner(jadual, entry_search):
                 ), tags=('normal',))
     except sqlite3.Error as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO UPLOAD INNER DATA:\n{str(e)}")
-
 def on_inner_click(event, jadual):
     item_id = jadual.identify_row(event.y)
     if item_id:  
@@ -126,31 +126,85 @@ def bina_menu_paste_search_global(event, entry_widget, root):
     else:
         menu_paste.add_command(label="[ Clipboard Empty ]", state="disabled")
     menu_paste.post(event.x_root, event.y_root)
-
 def jana_grafik_label_dari_row(r):
     """
-    🌟 FIXED COLUMN LINKING ENGINE: Pulls exact database rows for image compilation 🌟
-    Maps 'Lotcard No' from Treeview row index 9 to display it properly on the printed sticker.
+    🌟 ENJIN EKSTRAKSI INDEKS TREEVIEW MUTLAK (TREEVIEW STRICT INDEX MAPPING) 🌟
+    Menjamin pemetaan lajur yang tepat berdasarkan data baris tuple jadual utama.
     """
-    tarikh   = str(r[2])
-    customer = str(r[3])
-    drawing  = str(r[4])
-    part     = str(r[5])
-    qty      = str(r[6])
-    mfg      = str(r[7])
-    mac      = str(r[8])
-    
-    # 🌟 DIBAIKI: Mengambil nilai lajur Lotcard No (indeks ke-9) dan Sequence No (indeks ke-10) 🌟
-    lot_no   = str(r[9]).strip()
-    seq_no   = str(r[10]).strip()
-    
+    try:
+        elemen = [str(x).strip() for x in r]
+        
+        if elemen and (elemen[0] in ("☐", "☑") or len(elemen[0]) == 1):
+            elemen = elemen[1:]
+            
+        # Susunan elemen pangkalan data selepas dibuang checkbox:
+        # [0:id, 1:tarikh, 2:customer, 3:drawing_no, 4:part_no, 5:quantity, 6:mfg_date, 7:machine, 8:lotcard_no, 9:sequence_no]
+        if len(elemen) >= 10:
+            tarikh   = elemen[1]
+            customer = elemen[2]
+            drawing  = elemen[3]
+            part     = elemen[4]
+            qty      = elemen[5]
+            mfg      = elemen[6]
+            mac      = elemen[7]
+            lot_no   = elemen[8]  # Indeks 8 memegang data Lotcard No tulen
+            seq_no   = elemen[9]  # Indeks 9 memegang data Sequence No tulen (WP...)
+        else:
+            tarikh = customer = drawing = part = qty = mfg = mac = lot_no = seq_no = ""
+            for item in elemen:
+                if item.startswith("WP"):
+                    seq_no = item
+            calon_lot = [x for x in elemen if x and not x.startswith("WP") and len(x) > 2]
+            lot_no = calon_lot[-1] if calon_lot else "N/A"
+            
+    except Exception as e:
+        tarikh = customer = drawing = part = qty = mfg = mac = lot_no = seq_no = "Error"
+
+    # Pembersihan paparan Lot No
+    if not lot_no or lot_no.upper() in ("NONE", "N/A", "", "☐", "☑") or lot_no.startswith("WP"):
+        lot_no = "N/A"
+
     qr = qrcode.QRCode(version=1, box_size=10, border=1)
     qr.add_data(seq_no)
     qr.make(fit=True)
     img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     
-    # Hantar pembolehubah lot_no yang mengandungi data Lotcard No murni ke enjin label designer
     return ld.bina_imej_gabungan(img_qr_mentah, tarikh, drawing, part, qty, mfg, mac, seq_no, customer, lot_no), seq_no
+
+def padam_rekod_inner_terpilih(jadual, entry_search):
+    """
+    🗑️ ENJIN PEMADAMAN PUKAL MUKTAMAD (DATABASE COMMIT FIX) 🗑️
+    Memadamkan data terpilih (☑) daripada fail warehouse_data.db secara kekal
+    menggunakan SQL commit rasmi dan menyegarkan semula Treeview UI secara automatik.
+    """
+    item_dipilih = []
+    
+    for item_id in jadual.get_children():
+        nilai = jadual.item(item_id)['values']
+        if nilai and "☑" in str(nilai[0]):
+            item_dipilih.append((item_id, nilai[1]))  # nilai[1] memegang 'id' unik rekod database
+
+    if not item_dipilih:
+        messagebox.showwarning("SYSTEM WARNING", "SILA TANDA (☑) PADA REKOD YANG MAHU DIPADAM!")
+        return
+
+    msg_tanya = f"Adakah anda pasti mahu memadam {len(item_dipilih)} rekod terpilih daripada sistem secara KEKAL?"
+    if messagebox.askyesno("CONFIRM DELETE", msg_tanya):
+        try:
+            with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+                cursor = conn.cursor()
+                
+                for item_id, db_id in item_dipilih:
+                    cursor.execute("DELETE FROM rekod_qr WHERE id = ?", (db_id,))
+                
+                # 🌟 KUNCI UTAMA: Wajib commit untuk menulis perubahan kekal ke dalam disk piring keras! 🌟
+                conn.commit()
+                
+            messagebox.showinfo("SUCCESS", f"Berjaya memadam {len(item_dipilih)} rekod daripada sistem!")
+            carian_inner(jadual, entry_search)
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("DATABASE ERROR", f"GAGAL MEMADAM REKOD KILANG:\n{str(e)}")
 
 def eksport_inner_excel():
     try:
@@ -168,7 +222,8 @@ def eksport_inner_excel():
                 writer.writerow(["ID", "Date", "Customer Name", "Drawing No", "Part Number", "Quantity", "Mnfd Date", "Machine", "Lotcard No", "Sequence Number"])
                 writer.writerows(semua_data)
             messagebox.showinfo("SUCCESS", "The Inner Packing report has been successfully saved!")
-    except Exception as e: messagebox.showerror("SYSTEM ERROR", str(e))
+    except Exception as e: 
+        messagebox.showerror("SYSTEM ERROR", str(e))
 
 def susun_lajur_treeview(jadual, lajur, menaik):
     pass

@@ -51,7 +51,8 @@ def proses_submit_data_pukal(win_wh, kamus):
                 qr.make(fit=True)
                 img_qr = qr.make_image(fill_color="black", back_color="white").convert("RGB")
                 
-                img = ld.bina_imej_gabungan(img_qr, kamus["date"].get(), data["drawing"], data["part"], f"{qty} PCS", data["mfg"], data["machine"], seq, data["customer"])
+                # 🌟 DIBAIKI: Memasukkan data["lot"] pada parameter terakhir fungsi bina_imej_gabungan 🌟
+                img = ld.bina_imej_gabungan(img_qr, kamus["date"].get(), data["drawing"], data["part"], f"{qty} PCS", data["mfg"], data["machine"], seq, data["customer"], data["lot"])
                 senarai_kad.append((img, seq))
                 
                 path_sub = os.path.join("INNER_STICKER", datetime.now().strftime("%d-%m-%Y"), "".join([c for c in data["customer"] if c.isalnum() or c in " _-"]))
@@ -173,9 +174,9 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
         tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_tunggal_sahaja, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
-        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
-        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#1ABC9C", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
-        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_semua_pukal, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
-        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=3)
+        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#27AE60", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_semua_pukal, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_selak()

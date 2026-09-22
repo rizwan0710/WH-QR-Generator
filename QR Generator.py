@@ -1,8 +1,9 @@
-import os
+# 🌟 KOD BAHARU YANG BETUL (DITAMBAH filedialog) 🌟
+import os 
 import sys
-import socket
+import socket 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, filedialog, ttk  # <-- Sila selit filedialog di sini!
 from datetime import datetime
 
 # Import OHTA Precision Logistics Subsystems
@@ -20,7 +21,7 @@ else:
     # Running natively from Python source script files environment
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Fetch current hostname profile to map network subfolders dynamically
+# Fetch current hostname profile to map network subfolders dynamically 
 try:
     COMPUTER_NAME = socket.gethostname().upper().replace(" ", "_")
 except Exception:
@@ -57,13 +58,35 @@ def laksanakan_shutdown_system_selamat():
         root.destroy()
 
 def handle_manual_report_generation():
-    """Triggers an interactive Windows Save Dialog to let the user select where to store the data log spreadsheet."""
+    """
+    📊 ENJIN PENJANAAN LAPORAN EXCEL AUTOMATIK (EXCEL REPORT ROUTINE FIX) 100% KALIS RALAT 📊
+    Membuka dialog Windows Save As secara automatik untuk mendapatkan laluan fail (laluan_output_excel) 
+    sebelum menghantarnya ke enjin excel_generator bagi mengelakkan ralat kekurangan argumen posisi.
+    """
     try:
         import excel_generator
-        # Calls the updated module that triggers the native Windows file dialogue prompt window
-        excel_generator.jana_laporan_excel_tiga_tab(dbm.DATABASE_PATH)
+        
+        # 🌟 PEMBETULAN UTAMA: Buka Windows File Dialog untuk operator pilih lokasi simpanan fail spreadsheet 🌟
+        laluan_simpanan_excel = filedialog.asksaveasfilename(
+            title="choose file",
+            initialfile="data_report.xlsx",
+            defaultextension=".xlsx",
+            filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")],
+            parent=root
+        )
+        
+        # Jika operator menekan butang 'Cancel', batalkan proses pemuatan secara senyap
+        if not laluan_simpanan_excel:
+            return
+            
+        # 🚀 Hantar kedua-dua parameter wajib (Laluan Database Asal & Laluan Output Simpanan Pilihan Operator)
+        excel_generator.jana_laporan_excel_tiga_tab(dbm.DATABASE_PATH, laluan_simpanan_excel)
+        
+        # Tunjukkan mesej kejayaan mutlak kepada pihak pengurusan kilang 
+        messagebox.showinfo("Export Success", f"Report downloaded at:\n{laluan_simpanan_excel}", parent=root)
+        
     except Exception as e:
-        messagebox.showerror("Export Failed", f"System reporting engine encountered an operation error context: {str(e)}", parent=root)
+        messagebox.showerror("Export Failed", f"System reporting engine encountered an operation error context:\n{str(e)}", parent=root)
 
 # Main Corporate Branding Header Panel
 tk.Label(root, text="OHTA PRECISION (M) SDN BHD", font=("Segoe UI", 14, "bold"), fg="#1E3A8A", bg="#F1F5F9").pack(pady=(12, 2))

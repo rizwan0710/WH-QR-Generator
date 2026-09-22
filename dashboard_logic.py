@@ -9,8 +9,11 @@ from tkinter import messagebox, filedialog
 import excel_generator  # Connects cleanly to external 3-tab engine
 
 def dapatkan_statistik_dashboard_harian(tarikh_obj):
-    tarikh_sempang = tarikh_obj.strftime("%d-%m-%Y")  
-    tarikh_condong = tarikh_obj.strftime("%d/%m/%Y")  
+    """Kiraan total angka metrik kotak atas dengan padanan 3 format tarikh sekaligus (Kalis Kosong)."""
+    tarikh_iso = tarikh_obj.strftime("%Y-%m-%d")      # Contoh: 2026-09-20
+    tarikh_sempang = tarikh_obj.strftime("%d-%m-%Y")  # Contoh: 20-09-2026
+    tarikh_condong = tarikh_obj.strftime("%d/%m/%Y")  # Contoh: 20/09/2026
+    
     stats = {"inner_stickers": 0, "outer_boxes": 0, "invoice_logs": 0}
     db_path = "warehouse_data.db"
     if not os.path.exists(db_path): return stats
@@ -18,15 +21,18 @@ def dapatkan_statistik_dashboard_harian(tarikh_obj):
         with sqlite3.connect(db_path, timeout=10) as conn:
             cursor = conn.cursor()
             
-            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'WP%'", (tarikh_sempang, tarikh_condong))
+            # Kira Inner Stickers (WP)
+            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh LIKE ? OR tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'WP%'", (f"{tarikh_iso}%", tarikh_sempang, tarikh_condong))
             r_in = cursor.fetchone()
             stats["inner_stickers"] = r_in[0] if (r_in and r_in[0] is not None) else 0
             
-            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'B%'", (tarikh_sempang, tarikh_condong))
+            # Kira Outer Boxes (B)
+            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh LIKE ? OR tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'B%'", (f"{tarikh_iso}%", tarikh_sempang, tarikh_condong))
             r_out = cursor.fetchone()
             stats["outer_boxes"] = r_out[0] if (r_out and r_out[0] is not None) else 0
             
-            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'INV%'", (tarikh_sempang, tarikh_condong))
+            # Kira Invoice Logs (INV)
+            cursor.execute("SELECT COUNT(*) FROM rekod_qr WHERE (tarikh LIKE ? OR tarikh = ? OR tarikh = ?) AND sequence_no LIKE 'INV%'", (f"{tarikh_iso}%", tarikh_sempang, tarikh_condong))
             r_inv = cursor.fetchone()
             stats["invoice_logs"] = r_inv[0] if (r_inv and r_inv[0] is not None) else 0
     except Exception as e: 
@@ -34,23 +40,53 @@ def dapatkan_statistik_dashboard_harian(tarikh_obj):
     return stats
 
 def dapatkan_senarai_aktiviti_harian(tarikh_obj):
-    tarikh_sempang = tarikh_obj.strftime("%d-%m-%Y")  
-    tarikh_condong = tarikh_obj.strftime("%d/%m/%Y")  
+    """Memaparkan data ringkasan log summary bawah berdasarkan cap jam masa sebenar transaksi."""
+    tarikh_iso = tarikh_obj.strftime("%Y-%m-%d")      # Contoh: 2026-09-20
+    tarikh_sempang = tarikh_obj.strftime("%d-%m-%Y")  # Contoh: 20-09-2026
+    tarikh_condong = tarikh_obj.strftime("%d/%m/%Y")  # Contoh: 20/09/2026
+    
     senarai_aktiviti = []
     if not os.path.exists("warehouse_data.db"): return senarai_aktiviti
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, mfg_date, customer, sequence_no FROM rekod_qr WHERE (tarikh = ? OR tarikh = ?) ORDER BY id DESC LIMIT 50", (tarikh_sempang, tarikh_condong))
+            
+            # 🌟 DIBAIKI: Mengambil substr jam/minit dari lajur tarikh asli, dan memadankan 3 format tarikh berturutan!
+            query = """
+                SELECT id, tarikh, customer, sequence_no, mfg_date 
+                FROM rekod_qr 
+                WHERE (tarikh LIKE ? OR tarikh = ? OR tarikh = ?) 
+                ORDER BY id DESC LIMIT 50
+            """
+            cursor.execute(query, (f"{tarikh_iso}%", tarikh_sempang, tarikh_condong))
+            
             for r in cursor.fetchall():
-                id_db, mfg_val, cust, seq = r
+                id_db, tarikh_raw, cust, seq, mfg_val = r
                 seq_str = str(seq).upper().strip()
+                
+                # Pengelasan modul operasi
                 modul = "INNER PACKING" if seq_str.startswith("WP") else "OUTER PACKING" if seq_str.startswith("B") else "INVOICE LOGS" if seq_str.startswith("INV") else "SYSTEM REC"
-                waktu_final_str = str(mfg_val).strip() if ("AM" in str(mfg_val) or "PM" in str(mfg_val) or ":" in str(mfg_val)) else datetime.now().strftime("%I:%M:%S %p")
-                senarai_aktiviti.append((waktu_final_str, modul, seq_str, str(cust).upper().strip()))
-    except Exception as e: print(f"Error log: {e}")
+                
+                # 🌟 DIBAIKI: Ekstrak waktu jam (HH:MM:SS) dari data string tarikh database murni jika ada
+                waktu_clean = ""
+                try:
+                    if len(str(tarikh_raw)) > 10:
+                        # Contoh data: "2026-09-20 14:25:30" -> Ekstrak "14:25:30"
+                        waktu_clean = str(tarikh_raw).split()[1].strip()
+                    else:
+                        waktu_clean = str(mfg_val).strip()
+                except:
+                    waktu_clean = datetime.now().strftime("%H:%M:%S")
+                
+                # Jika format jam kosong atau tiada teks waktu, letakkan waktu lalai semasa
+                if not waktu_clean or ":" not in waktu_clean:
+                    waktu_clean = datetime.now().strftime("%H:%M:%S")
+                    
+                senarai_aktiviti.append((waktu_clean, modul, seq_str, str(cust).upper().strip()))
+                
+    except Exception as e: 
+        print(f"Error log: {e}")
     return senarai_aktiviti
-
 def laksanakan_manual_backup_PC(parent_win):
     pass
 
