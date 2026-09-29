@@ -101,8 +101,8 @@ def buka_popup_pukal_inner_1by1(item_ditanda, root):
     
     if total_label == 1:
         # 🌟 SERAGAM (1 DATA): Menggunakan kod warna, teks, dan susunan ikon baharu
-        tk.Button(frame_btn, text="📥  PRINT CURRENT", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[0][0]), bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="💾  SAVE ALL", command=simpan_tunggal_sahaja, bg="#E67E22", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="📥  PRINT ", command=lambda: ipl.cetak_qr(senarai_kad_pembungkus[0][0]), bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(frame_btn, text="💾  SAVE ", command=simpan_tunggal_sahaja, bg="#E67E22", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="✖  CLOSE", command=tingkap_popup.destroy, bg="#2C3E50", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
         # 🌟 SERAGAM (BANYAK DATA): Diselaraskan tepat mengikut barisan 4 butang utama Invoice Panel

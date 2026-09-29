@@ -82,7 +82,7 @@ def paparkan_pop_up_imej_label(win_outer, entries, img_label, title_text, seq_no
             
         # 2. Kembalikan fungsi dan gaya asal butang submit utama borang
         if btn_submit_ref and btn_submit_ref.winfo_exists():
-            btn_submit_ref.config(state="normal", text="SUBMIT & GENERATE OUTER QR", bg="#0284C7")
+            btn_submit_ref.config(state="normal", text="GENERATE QR", bg="#0284C7")
             
         if entries and len(entries) > 0: 
             entries[0].focus_set()
@@ -95,7 +95,7 @@ def paparkan_pop_up_imej_label(win_outer, entries, img_label, title_text, seq_no
     btn_style = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
     
     tk.Button(f_btn, text="🖨️ PRINT", command=lambda: cetak_qr(img_label), bg="#22C55E", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-    tk.Button(f_btn, text="💾 SAVE", command=lambda: simpan_qr_manual(img_label, seq_no), bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+    #tk.Button(f_btn, text="💾 SAVE", command=lambda: simpan_qr_manual(img_label, seq_no), bg="#F59E0B", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
     tk.Button(f_btn, text="❌ CLOSE", command=tutup_dan_reset_borang, bg="#374151", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=2)
 
 def proses_submit_outer(win_outer, entry_date, entries_inner, btn_submit_widget=None):

@@ -1,8 +1,10 @@
 # 🌟 KOD BAHARU YANG BETUL (DITAMBAH filedialog) 🌟
 import os 
 import sys
-import socket 
-import tkinter as tk
+import socket
+import ctypes
+import platform 
+import tkinter as tk 
 from tkinter import messagebox, filedialog, ttk  # <-- Sila selit filedialog di sini!
 from datetime import datetime
 
@@ -13,12 +15,12 @@ import form_outer_packing as fop
 import form_invoice_packing as fip 
 import main_dashboard_binder as mdb 
 
-# 1. LOCAL DYNAMIC ENVIRONMENT PATH RESOLUTION
+# 1. LOCAL DYNAMIC ENVIRONMENT PATH RESOLUTION 
 if getattr(sys, 'frozen', False):
     # Running compiled inside a PyInstaller standalone .exe bundle
     BASE_DIR = os.path.dirname(sys.executable)
 else:
-    # Running natively from Python source script files environment
+    # Running natively from Python source script files environment 
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Fetch current hostname profile to map network subfolders dynamically 

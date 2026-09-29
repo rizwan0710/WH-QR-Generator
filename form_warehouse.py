@@ -68,7 +68,20 @@ def proses_submit_data_pukal(win_wh, kamus):
             
             conn.commit()
 
+        # 1. Buka popup slider cetakan kumpulan
         buka_popup_pukal_slider_inner(win_wh, senarai_kad)
+        
+        # 2. 🌟 AUTO-RESET DAN AUTOFOCUS SELEPAS BERJAYA SUBMIT 🌟
+        try:
+            for field in ["drawing", "part", "machine", "customer", "qty", "packing_qty", "lot"]:
+                if field in kamus and kamus[field].winfo_exists():
+                    kamus[field].delete(0, tk.END)
+            
+            if "customer" in kamus and kamus["customer"].winfo_exists():
+                kamus["customer"].focus_set()
+        except Exception:
+            pass
+
     except Exception as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO PROCESS DATA:\n{str(e)}", parent=win_wh)
 
@@ -135,18 +148,7 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
             except Exception as e_print:
                 messagebox.showerror("PRINT ERROR", f"Gagal memproses cetakan kelompok:\n{str(e_print)}", parent=win)
 
-    def simpan_semua_pukal():
-        folder_tujuan = filedialog.askdirectory(title="Select Save Folder", parent=win)
-        if folder_tujuan:
-            for img_kad, seq_no in senarai_kad:
-                img_kad.convert("RGB").save(os.path.join(folder_tujuan, f"INNER_STICKER_{seq_no}.png"), "PNG")
-            messagebox.showinfo("Success", "All batch stickers saved successfully!", parent=win)
-
-    def simpan_tunggal_sahaja():
-        img_kad, seq_no = senarai_kad[indeks_halaman]
-        ipl.simpan_qr_manual(img_kad, seq_no)
-
-    # ─── 1. BAR NAVIGASI SELAK ───
+    # ─── 1. BAR NAVIGASI SELAK (PREV / NEXT) ───
     fr_nav = tk.Frame(win, bg="#F8F9FA")
     btn_prev = tk.Button(fr_nav, text="◀ PREV", command=halaman_ke_kiri, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
     btn_next = tk.Button(fr_nav, text="NEXT ▶", command=halaman_ke_kanan, bg="#34495E", fg="white", font=("Segoe UI", 9, "bold"), width=13, relief="flat", cursor="hand2")
@@ -170,13 +172,13 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     }
     
     if total_label == 1:
-        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_tunggal_sahaja, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+        # Menukar teks cetakan dan menambah butang Close bagi label tunggal
+        tk.Button(fr_btn, text="🖨  PRINT ALL", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#5A626A", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
     else:
-        tk.Button(fr_btn, text="🖨  PRINT CURRENT", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[indeks_halaman][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#27AE60", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="💾  SAVE ALL", command=simpan_semua_pukal, bg="#E67E22", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="✖  CLOSE", command=win.destroy, bg="#34495E", **b_st).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
+        # Menukar butang cetakan kelompok utama dan menggantikan Save dengan butang Close
+        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#5A626A", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
 
+    # Trigger paparan awal imej pertama
     kemaskini_selak()

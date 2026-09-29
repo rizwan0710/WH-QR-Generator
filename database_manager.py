@@ -396,7 +396,7 @@ def buka_tetingkap_database(root):
     fr_ctrl_hist = tk.Frame(tab_history, bg="#F1F5F9", pady=8, padx=10)
     fr_ctrl_hist.pack(fill="x")
     
-    tk.Label(fr_ctrl_hist, text="Masukkan Sequence No (WP / B / INV):", font=("Segoe UI", 9, "bold"), bg="#F1F5F9").pack(side="left", padx=5)
+    tk.Label(fr_ctrl_hist, text="Insert Sequence No (WP / B / INV):", font=("Segoe UI", 9, "bold"), bg="#F1F5F9").pack(side="left", padx=5)
     ent_search_hist = tk.Entry(fr_ctrl_hist, font=("Segoe UI", 10, "bold"), width=30, fg="#1E3A8A")
     ent_search_hist.pack(side="left", padx=5)
     

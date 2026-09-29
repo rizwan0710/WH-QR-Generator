@@ -28,7 +28,7 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
 
     tingkap_popup = tk.Toplevel(parent)
     tingkap_popup.title(f"INVOICE DATABASE PANEL - {inv_no}")
-    tingkap_popup.geometry("560x540+420+120") # 🌟 FIXED: Menggunakan 'x' untuk format lebar x tinggi yang sah
+    tingkap_popup.geometry("560x540+420+120") 
     tingkap_popup.configure(bg="#F8F9FA")
     tingkap_popup.grab_set()
 
@@ -140,12 +140,12 @@ def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
 
     if total_label == 1:
         tk.Button(frame_btn, text="🖨️ PRINT", command=cetak_halaman_tunggal, bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="💾 SAVE", command=simpan_halaman_tunggal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+       # tk.Button(frame_btn, text="💾 SAVE", command=simpan_halaman_tunggal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
     else:
         tk.Button(frame_btn, text="🖨️ PRINT CURRENT", command=cetak_halaman_tunggal, bg="#2ECC71", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="🖨️ PRINT ALL", command=cetak_semua_pukal, bg="#10B981", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(frame_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+       # tk.Button(frame_btn, text="💾 SAVE ALL", command=simpan_semua_pukal, bg="#E65100", **btn_style).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_popup.destroy, bg="#34495E", **btn_style).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=4)
 
     kemaskini_paparan_selak()

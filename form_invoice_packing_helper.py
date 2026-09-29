@@ -1,4 +1,4 @@
-# form_invoice_packing_helper.py - PART 1: 3 RULES HARD LOCK ENGINE
+# form_invoice_packing_helper.py - FULL PRODUCTION CODE (FIXED AUTO-DETECT ENGINE)
 import tkinter as tk
 from tkinter import messagebox
 import sqlite3
@@ -44,7 +44,6 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()
-            # Semak jika kod box 'B...' ini sudah dipetakan pada siri Invoice 'INV%' di lajur machine
             cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' AND machine = ?", (val_semasa,))
             if cursor.fetchone():
                 messagebox.showerror(
@@ -59,26 +58,55 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     except Exception as e_db:
         print(f"Database security check error: {str(e_db)}")
 
-    # Logik Pengesan Customer & Cross-reference database (Asal)
+    # 🌟 IMPLEMENTASI LOGIK IDEA USER: CARI KOD RINGKAS DAN TUKAR KEPADA NAMA PENUH EXCEL SERTA-MERTA 🌟
     cust_terkesan = "INTERNAL/COMBINED"
     try:
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()
+            
+            # Langkah A: Cari kod ringkas inner box (WP...) di dalam rekod Outer Box (B...)
             cursor.execute("SELECT machine FROM rekod_qr WHERE sequence_no = ?", (val_semasa,))
             res = cursor.fetchone()
+            
             if res and res[0]:
-                raw_text = str(res[0]).strip().replace("[","").replace("]","").replace("'","").replace('"','')
-                linked_inners = [s.strip() for s in raw_text.split(",") if s.strip()]
+                text_raw = str(res[0]).strip().replace("[","").replace("]","").replace("'","").replace('"','')
+                linked_inners = [s.strip() for s in text_raw.split(",") if s.strip()]
+                
                 if linked_inners:
+                    # Langkah B: Ambil nilai kolum customer (kod ringkas cth: CEPHEID) dari rekod Inner Box pertama
                     cursor.execute("SELECT customer FROM rekod_qr WHERE sequence_no = ?", (linked_inners[0],))
                     res_cust = cursor.fetchone()
+                    
                     if res_cust and res_cust[0]:
-                        cust_terkesan = str(res_cust[0]).strip().upper()
-    except Exception:
+                        kod_ringkas_db = str(res_cust[0]).strip().upper()
+                        
+                        # Langkah C: Ketuk jadual master_produk (A4 == B4) untuk ambil Nama Penuh Syarikat dari Excel
+                        query_user_idea = """
+                            SELECT DISTINCT customer_name 
+                            FROM master_produk 
+                            WHERE TRIM(UPPER(customer_code)) = ? OR TRIM(UPPER(customer_name)) = ?
+                            LIMIT 1
+                        """
+                        cursor.execute(query_penterjemah, (kod_ringkas_db, kod_ringkas_db)) if 'query_penterjemah' in locals() else cursor.execute(query_user_idea, (kod_ringkas_db, kod_ringkas_db))
+                        row_master = cursor.fetchone()
+                        
+                        if row_master and row_master[0] and str(row_master[0]).strip() != "":
+                            cust_terkesan = str(row_master[0]).strip().upper()
+                        else:
+                            # Fallback carian partial LIKE sekiranya ada ruang kosong tersembunyi
+                            cursor.execute("SELECT DISTINCT customer_name FROM master_produk WHERE customer_code LIKE ? LIMIT 1", (f"%{kod_ringkas_db}%",))
+                            row_like = cursor.fetchone()
+                            if row_like and row_like[0]:
+                                cust_terkesan = str(row_like[0]).strip().upper()
+                            else:
+                                cust_terkesan = kod_ringkas_db
+    except Exception as e_detect:
+        print(f"Customer detection helper error: {str(e_detect)}")
         cust_terkesan = "INTERNAL/COMBINED"
 
     customer_semasa_main = var_customer.get()
 
+    # 🌟 SETKAN NAMA PENUH TERSEBUT KANTIAN KE DALAM WIDGET SKRIN UTAMA 🌟
     if customer_semasa_main == "- AUTO DETECT -" or customer_semasa_main == "":
         var_customer.set(cust_terkesan)
     elif cust_terkesan != customer_semasa_main:
@@ -99,7 +127,7 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     # 🚀 AUTOMATIC FOCUS JUMP (Tembak kursor ke kotak bawah tanpa mouse)
     if idx + 1 < total_maksimum:
         entries_outer[idx + 1].focus_set()
-        # form_invoice_packing_helper.py - PART 2: DYNAMIC LAYOUT GENERATOR
+        
 def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_customer, label_counter):
     """Penjana senarai kolum baris input berasaskan Canvas Scroll (Had Maksimum 50)"""
     for child in content_frame.winfo_children():
@@ -118,6 +146,7 @@ def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_custo
         ent.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=5)
         
         entries_list.append(ent)
+        # Menambah ikatan Return untuk pencetus imbasan scanner automatik yang lancar
         ent.bind("<Return>", lambda e, i=idx: semak_dan_lompat_auto(e, i, entries_list, total_box, var_customer, label_counter))
 
     label_counter.config(text=f"Scanned: 0 / {total_box} Boxes")
@@ -140,4 +169,3 @@ def laksanakan_penjanaan_kotak_pukal(entry_total_box, content_frame, entries_lis
         entry_total_box.insert(0, "50")
         
     bina_kotak_imbasan_dinamik(content_frame, total_val, entries_list, var_customer, label_counter)
-
