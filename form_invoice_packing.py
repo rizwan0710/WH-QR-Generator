@@ -1,3 +1,4 @@
+# form_invoice_packing.py - COMPLETED & CONSOLIDATED STABLE REVERSION (100% FIXED)
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -44,19 +45,68 @@ def buka_borang_invoice(root):
     entry_date.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
     entry_date.bind("<Key>", lambda e: "break")
     
-    # Slot 2: Invoice Number
+        # 🌟 KOREKSI PEMBOLEHUBAH AUTO-POPULATE (PRE-BILLING LINKAGE) 🌟
+    var_invoice_no = tk.StringVar()
+    var_so_no = tk.StringVar()
+
+        # 🌟 KOREKSI PEMBOLEHUBAH AUTO-POPULATE (PRE-BILLING LINKAGE WITH PLACEHOLDERS) 🌟
+    var_invoice_no = tk.StringVar(value="- AUTO DETECT -")
+    var_so_no = tk.StringVar(value="- AUTO DETECT -")
+
+    # Fungsi setempat standalone untuk memicu semakan Foreign Key berasaskan nama Customer
+    def pemicu_auto_populate_pre_billing(event=None):
+        nama_cust = var_customer.get().strip().upper()
+        
+        if not nama_cust or nama_cust == "- AUTO DETECT -":
+            var_invoice_no.set("- AUTO DETECT -")
+            var_so_no.set("- AUTO DETECT -")
+            return
+            
+        import sqlite3
+        import database_manager as dbm
+        try:
+            with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
+                cursor = conn.cursor()
+                
+                # 🌟 UPGRADE CARIAN SEPARA (ANTI-FAIL): Mencari persamaan nama syarikat menggunakan kaedah LIKE 🌟
+                query_bijak = """
+                    SELECT invoice_no, so_no FROM master_invoice 
+                    WHERE ? LIKE '%' || UPPER(TRIM(customer_name)) || '%'
+                       OR UPPER(TRIM(customer_name)) LIKE '%' || ? || '%'
+                    ORDER BY id DESC LIMIT 1
+                """
+                cursor.execute(query_bijak, (nama_cust, nama_cust))
+                rekod = cursor.fetchone()
+                
+                if rekod:
+                    inv_terdaftar, so_terdaftar = rekod
+                    var_invoice_no.set(str(inv_terdaftar).strip())
+                    var_so_no.set(str(so_terdaftar).strip())
+                    print(f"[FK LINK SUCCESS] Synced {nama_cust} -> INV: {inv_terdaftar} | SO: {so_terdaftar}")
+                else:
+                    var_invoice_no.set("- NOT REGISTERED -")
+                    var_so_no.set("- NOT REGISTERED -")
+        except Exception as e:
+            print(f"[FK LINK NOTICE] Bypassed check: {e}")
+ 
+
+    # Mengikat pembolehubah var_customer supaya sentiasa memantau perubahan nama secara live
+    var_customer.trace_add("write", lambda *args: win_inv.after(50, pemicu_auto_populate_pre_billing))
+
+    # Slot 2: Invoice Number (Kini Bersama Placeholder Auto Detect)
     frame_row2 = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row2.pack(fill=tk.X, pady=3)
     tk.Label(frame_row2, text="Invoice Number :", **lbl_style).pack(side=tk.LEFT)
-    entry_inv_no = tk.Entry(frame_row2, **ent_style)
+    entry_inv_no = tk.Entry(frame_row2, textvariable=var_invoice_no, font=("Segoe UI", 10, "bold"), state="readonly", fg="#0D6EFD", relief="flat", bg="#F8F9FA")
     entry_inv_no.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
     
-    # Slot 3: Part Number / SO
+    # Slot 3: SO Number (Kini Bersama Placeholder Auto Detect)
     frame_row3 = tk.Frame(frame_data_entry, bg="#F8F9FA")
     frame_row3.pack(fill=tk.X, pady=3)
     tk.Label(frame_row3, text="SO Number :", **lbl_style).pack(side=tk.LEFT)
-    entry_so_no = tk.Entry(frame_row3, **ent_style)
+    entry_so_no = tk.Entry(frame_row3, textvariable=var_so_no, font=("Segoe UI", 10, "bold"), state="readonly", fg="#0D6EFD", relief="flat", bg="#F8F9FA")
     entry_so_no.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
+
     
     # Slot Baru: Customer Name 
     frame_row_cust = tk.Frame(frame_data_entry, bg="#F8F9FA")
@@ -78,10 +128,22 @@ def buka_borang_invoice(root):
     entry_total_box.insert(0, "4") 
     entry_total_box.pack(side=tk.LEFT, padx=2)
     
+       # 🌟 INTEGRASI PARAMETER: Memanggil nama fungsi bina_kotak_imbasan_dinamik yang wujud dalam helper! 🌟
     def aksi_apply_total_box():
-        helper.laksanakan_penjanaan_kotak_pukal(entry_total_box, frame_scroll_content, entries_outer, var_customer, lbl_counter)
+        try:
+            jumlah_kotak = int(entry_total_box.get().strip())
+        except ValueError:
+            jumlah_kotak = 4 
+            
+        helper.bina_kotak_imbasan_dinamik(frame_scroll_content, jumlah_kotak, entries_outer, var_customer, lbl_counter, entry_inv_no, entry_so_no)
+        
         if entries_outer and len(entries_outer) > 0:
             entries_outer[0].focus_set()
+
+    # TUKAR WARNA BUTANG APPLY KEPADA OREN (#FD7E14)
+    tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#FD7E14", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
+
+  
 
     # 🟠 TUKAR WARNA BUTANG APPLY KEPADA OREN (#FD7E14)
     tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#FD7E14", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
@@ -108,7 +170,8 @@ def buka_borang_invoice(root):
         lambda e: [canvas.configure(scrollregion=canvas.bbox("all")), canvas.itemconfig(id_canvas_window, width=canvas.winfo_width())]
     )
     
-    helper.bina_kotak_imbasan_dinamik(frame_scroll_content, 4, entries_outer, var_customer, lbl_counter)
+    # 🌟 INTEGRASI PARAMETER BIL 2: Alirkan objek entry_inv_no dan entry_so_no semasa tetingkap mula-mula dibuka (Default 4 Boxes)
+    helper.bina_kotak_imbasan_dinamik(frame_scroll_content, 4, entries_outer, var_customer, lbl_counter, entry_inv_no, entry_so_no)
 
     # ─── ENJIN LOMPATAN FOKUS ENTER AUTOMATIK ───
     entry_inv_no.bind("<Return>", lambda event: entry_so_no.focus_set())
@@ -125,7 +188,7 @@ def buka_borang_invoice(root):
             win_inv.children.get("!button")
         )
 
-    # ─── Barisan Butang Kawalan Aksi Bawah (TUKAR KE HIJAU #1E7E34) ───
+    # ─── Barisan Butang Kawalan Aksi Bawah ───
     tk.Button(win_inv, text="SUBMIT & PRINT INVOICE QR", command=eksekusi_submit_dan_cetak_pukal, bg="#1E7E34", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(fill="x", padx=25, pady=(0, 4))
     
     frame_action_bar = tk.Frame(win_inv, bg="#F8F9FA")

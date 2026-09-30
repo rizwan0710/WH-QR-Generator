@@ -9,6 +9,8 @@ from PIL import Image, ImageTk
 import label_designer as ld
 import invoice_print_manager  # Triggers the newly added 1-bit crisp binary printer engine
 
+
+
 baris_hover_terakhir = None
 
 def carian_inner(jadual, entry_search):
@@ -27,9 +29,14 @@ def carian_inner(jadual, entry_search):
         with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
             cursor = conn.cursor()
             
+            # 🌟 SEMAKAN LAJUR DINAMIK: Mengesan sama ada db menggunakan 'tarikh' atau 'date_created'
+            cursor.execute("PRAGMA table_info(rekod_qr)")
+            info_lajur = [info[1] for info in cursor.fetchall()]
+            nama_lajur_tarikh = "tarikh" if "tarikh" in info_lajur else "date_created"
+            
             if not kata_kunci_senarai:
-                cursor.execute("""
-                    SELECT id, tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no 
+                cursor.execute(f"""
+                    SELECT id, {nama_lajur_tarikh}, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no 
                     FROM rekod_qr WHERE sequence_no LIKE 'WP%' ORDER BY id DESC
                 """)
                 semua_rekod = cursor.fetchall()
@@ -38,8 +45,8 @@ def carian_inner(jadual, entry_search):
                 parameter_sql = []
                 
                 for k in kata_kunci_senarai:
-                    sub_queries.append("""
-                        (tarikh LIKE ? OR customer LIKE ? OR drawing_no LIKE ? OR 
+                    sub_queries.append(f"""
+                        ({nama_lajur_tarikh} LIKE ? OR customer LIKE ? OR drawing_no LIKE ? OR 
                          part_no LIKE ? OR quantity LIKE ? OR mfg_date LIKE ? OR 
                          machine LIKE ? OR lotcard_no LIKE ? OR sequence_no LIKE ?)
                     """)
@@ -47,7 +54,7 @@ def carian_inner(jadual, entry_search):
                     parameter_sql.extend([pola] * 9)
                     
                 query_final = f"""
-                    SELECT id, tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no 
+                    SELECT id, {nama_lajur_tarikh}, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no 
                     FROM rekod_qr 
                     WHERE sequence_no LIKE 'WP%' AND ({ " OR ".join(sub_queries) })
                     ORDER BY id DESC
@@ -61,6 +68,7 @@ def carian_inner(jadual, entry_search):
                 ), tags=('normal',))
     except sqlite3.Error as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO UPLOAD INNER DATA:\n{str(e)}")
+
 def on_inner_click(event, jadual):
     item_id = jadual.identify_row(event.y)
     if item_id:  

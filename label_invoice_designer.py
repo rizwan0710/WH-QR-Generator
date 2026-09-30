@@ -1,6 +1,7 @@
 # label_invoice_designer.py - FULL FIXED 600 DPI TEMPLATE ENGINE WITH SAFE TRUE-TYPE FALLBACK
 from PIL import Image, ImageDraw, ImageFont
 import os
+import sys
 
 def muatkan_fon_selamat(nama_fail_utama, saiz):
     """Memuatkan fon sistem secara dinamik dengan rujukan berbilang fon TrueType Windows untuk mengelakkan load_default bitmap crash."""
@@ -128,8 +129,16 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
         lukis.text((label_x, current_y), label, fill="black", font=font_data)
         lukis.text((data_x, current_y), nilai, fill="black", font=font_bold)
     
-    # 4. 🌟 MEMUATKAN LOGO OHTA PNG LUTSINAR
-    logo_fail = "logo_ohta.png"
+   
+    # 4. 🌟 MEMUATKAN LOGO OHTA PNG LUTSINAR (FIXED FOR EXE BUNDLE)
+    # Ambil laluan folder tempat fail .exe diletakkan secara dinamik
+    if getattr(sys, 'frozen', False):
+        folder_aplikasi = os.path.dirname(sys.executable)
+    else:
+        folder_aplikasi = os.path.dirname(os.path.abspath(__file__))
+        
+    logo_fail = os.path.join(folder_aplikasi, "logo_ohta.png")
+    
     if os.path.exists(logo_fail):
         try:
             img_logo_raw = Image.open(logo_fail)
@@ -148,7 +157,9 @@ def bina_imej_invoice(img_qr, invoice_no, so_no, outer_seq, outer_qty, seq_inv_s
         except Exception:
             lukis.text((int(250 * skala), int(22 * skala)), "[ OHTA LOGO ]", fill="black", font=font_data)
     else:
-        lukis.text((int(250 * skala), int(22 * skala)), "[ OHTA ]", fill="black", font=font_data)
+        # Jika fail gambar tiada di sebelah .exe, paparkan teks backup yang kemas tanpa tanda kurung [ ]
+        lukis.text((int(250 * skala), int(22 * skala)), "OHTA", fill="black", font=font_bold)
+
 
     # 5. 🌟 QR Code Adjustment
     qr_saiz = int(72 * skala)

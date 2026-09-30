@@ -1,7 +1,10 @@
-# form_invoice_packing_helper.py - FULL PRODUCTION CODE (FIXED AUTO-DETECT ENGINE)
+# form_invoice_packing_helper.py - PART 1: IMPORTS & BARCODE CHECK ENGINES (100% KALIS EXE - CLEANED)
 import tkinter as tk
 from tkinter import messagebox
 import sqlite3
+import os
+import sys
+import database_manager as dbm  # 🌟 Hubungan dinamik pangkalan data rasmi kalis .exe
 
 def cuci_isi_borang_invoice(entry_inv_no, entry_so_no, var_customer, entry_total_box, frame_scroll_content, entries_outer, label_counter):
     entry_inv_no.delete(0, tk.END)
@@ -9,10 +12,10 @@ def cuci_isi_borang_invoice(entry_inv_no, entry_so_no, var_customer, entry_total
     entry_total_box.delete(0, tk.END)
     entry_total_box.insert(0, "4") 
     var_customer.set("- AUTO DETECT -")
-    bina_kotak_imbasan_dinamik(frame_scroll_content, 4, entries_outer, var_customer, label_counter)
+    bina_kotak_imbasan_dinamik(frame_scroll_content, 4, entries_outer, var_customer, label_counter, entry_inv_no, entry_so_no)
     entry_inv_no.focus_set()
 
-def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_customer, label_counter):
+def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_customer, label_counter, entry_inv_no=None, entry_so_no=None):
     """[3 RULES STRICT SECURITY] Enjin pengesan customer, alarm duplikasi, dan fungsi auto-jump."""
     val_semasa = entries_outer[idx].get().strip().upper()
     entries_outer[idx].delete(0, tk.END)
@@ -42,7 +45,7 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
 
     # 🚨 RULE 3: IF OUTERBOX DAH PERNAH SCAN / WUJUD DALAM DB INVOICE -> ERROR
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE 'INV%' AND machine = ?", (val_semasa,))
             if cursor.fetchone():
@@ -58,13 +61,11 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
     except Exception as e_db:
         print(f"Database security check error: {str(e_db)}")
 
-    # 🌟 IMPLEMENTASI LOGIK IDEA USER: CARI KOD RINGKAS DAN TUKAR KEPADA NAMA PENUH EXCEL SERTA-MERTA 🌟
+    # 🌟 IMPLEMENTASI LOGIK: CARI KOD RINGKAS DAN TUKAR KEPADA NAMA PENUH EXCEL SERTA-MERTA 🌟
     cust_terkesan = "INTERNAL/COMBINED"
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
-            
-            # Langkah A: Cari kod ringkas inner box (WP...) di dalam rekod Outer Box (B...)
             cursor.execute("SELECT machine FROM rekod_qr WHERE sequence_no = ?", (val_semasa,))
             res = cursor.fetchone()
             
@@ -73,27 +74,24 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
                 linked_inners = [s.strip() for s in text_raw.split(",") if s.strip()]
                 
                 if linked_inners:
-                    # Langkah B: Ambil nilai kolum customer (kod ringkas cth: CEPHEID) dari rekod Inner Box pertama
                     cursor.execute("SELECT customer FROM rekod_qr WHERE sequence_no = ?", (linked_inners[0],))
                     res_cust = cursor.fetchone()
                     
                     if res_cust and res_cust[0]:
                         kod_ringkas_db = str(res_cust[0]).strip().upper()
                         
-                        # Langkah C: Ketuk jadual master_produk (A4 == B4) untuk ambil Nama Penuh Syarikat dari Excel
                         query_user_idea = """
                             SELECT DISTINCT customer_name 
                             FROM master_produk 
                             WHERE TRIM(UPPER(customer_code)) = ? OR TRIM(UPPER(customer_name)) = ?
                             LIMIT 1
                         """
-                        cursor.execute(query_penterjemah, (kod_ringkas_db, kod_ringkas_db)) if 'query_penterjemah' in locals() else cursor.execute(query_user_idea, (kod_ringkas_db, kod_ringkas_db))
+                        cursor.execute(query_user_idea, (kod_ringkas_db, kod_ringkas_db))
                         row_master = cursor.fetchone()
                         
                         if row_master and row_master[0] and str(row_master[0]).strip() != "":
                             cust_terkesan = str(row_master[0]).strip().upper()
                         else:
-                            # Fallback carian partial LIKE sekiranya ada ruang kosong tersembunyi
                             cursor.execute("SELECT DISTINCT customer_name FROM master_produk WHERE customer_code LIKE ? LIMIT 1", (f"%{kod_ringkas_db}%",))
                             row_like = cursor.fetchone()
                             if row_like and row_like[0]:
@@ -106,9 +104,11 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
 
     customer_semasa_main = var_customer.get()
 
-    # 🌟 SETKAN NAMA PENUH TERSEBUT KANTIAN KE DALAM WIDGET SKRIN UTAMA 🌟
+    # 🌟 SETKAN NAMA PENUH KORPORAT KEDALAM VARIABEL UTAMA 🌟
     if customer_semasa_main == "- AUTO DETECT -" or customer_semasa_main == "":
         var_customer.set(cust_terkesan)
+        # Panggilan fungsi lama yang rosak di sini telah dibuang secara total demi kelancaran trace_add UI.
+                
     elif cust_terkesan != customer_semasa_main:
         messagebox.showerror(
             "🚨 ALARM: DIFFERENT CUSTOMER!",
@@ -120,15 +120,14 @@ def semak_dan_lompat_auto(event, idx, entries_outer, total_maksimum, var_custome
         entries_outer[idx].delete(0, tk.END)
         return "break"
 
-    # Kemaskini label counter statistik imbasan masa nyata
     kira_diisi = sum(1 for e in entries_outer if e.get().strip())
     label_counter.config(text=f"Scanned: {kira_diisi} / {total_maksimum} Boxes")
 
-    # 🚀 AUTOMATIC FOCUS JUMP (Tembak kursor ke kotak bawah tanpa mouse)
     if idx + 1 < total_maksimum:
         entries_outer[idx + 1].focus_set()
-        
-def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_customer, label_counter):
+
+# form_invoice_packing_helper.py - PART 2: DYNAMIC INPUT CONTROLLER GENERATION
+def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_customer, label_counter, entry_inv_no=None, entry_so_no=None):
     """Penjana senarai kolum baris input berasaskan Canvas Scroll (Had Maksimum 50)"""
     for child in content_frame.winfo_children():
         child.destroy()
@@ -146,26 +145,5 @@ def bina_kotak_imbasan_dinamik(content_frame, total_box, entries_list, var_custo
         ent.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=5)
         
         entries_list.append(ent)
-        # Menambah ikatan Return untuk pencetus imbasan scanner automatik yang lancar
-        ent.bind("<Return>", lambda e, i=idx: semak_dan_lompat_auto(e, i, entries_list, total_box, var_customer, label_counter))
-
-    label_counter.config(text=f"Scanned: 0 / {total_box} Boxes")
-    if entries_list:
-        entries_list[0].focus_set()
-
-def laksanakan_penjanaan_kotak_pukal(entry_total_box, content_frame, entries_list, var_customer, label_counter):
-    val_str = entry_total_box.get().strip()
-    if not val_str.isdigit():
-        messagebox.showwarning("ERROR", "PLEASE INSERT INTEGER NUMBER ONLY!")
-        return
-        
-    total_val = int(val_str)
-    if total_val < 1:
-        total_val = 1
-    elif total_val > 50:
-        messagebox.showwarning("MAXIMUM CAPACITY", "THE SYSTEM SET LIMITS TO ONLY 50 BOXES PER INVOICE")
-        total_val = 50
-        entry_total_box.delete(0, tk.END)
-        entry_total_box.insert(0, "50")
-        
-    bina_kotak_imbasan_dinamik(content_frame, total_val, entries_list, var_customer, label_counter)
+        # Mengikat isyarat lompatan fokus automatik semasa operator menekan butang Enter
+        ent.bind("<Return>", lambda e, i=idx: semak_dan_lompat_auto(e, i, entries_list, total_box, var_customer, label_counter, entry_inv_no, entry_so_no))

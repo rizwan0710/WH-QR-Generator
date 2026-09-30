@@ -13,7 +13,9 @@ import database_manager as dbm
 import innerbox_form_ui as ifu
 import form_outer_packing as fop 
 import form_invoice_packing as fip 
-import main_dashboard_binder as mdb 
+import main_dashboard_binder as mdb
+import form_pre_billing as fpb 
+
 
 # 1. LOCAL DYNAMIC ENVIRONMENT PATH RESOLUTION 
 if getattr(sys, 'frozen', False):
@@ -100,17 +102,22 @@ frame_control.pack(fill="x", padx=25, pady=4)
 
 btn_form_style = {"font": ("Segoe UI", 10, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
-tk.Button(frame_control, text="📦 FORM 1: INNER PACKING", 
+tk.Button(frame_control, text="📦 FORM 1: INNER LABEL", 
           command=lambda: [ifu.buka_borang_warehouse(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], 
           bg="#0284C7", **btn_form_style).pack(fill="x", pady=3)
 
-tk.Button(frame_control, text="🏢 FORM 2: OUTER PACKING", 
+tk.Button(frame_control, text="🏢 FORM 2: OUTER LABEL", 
           command=lambda: [fop.buka_borang_outer(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], 
           bg="#2563EB", **btn_form_style).pack(fill="x", pady=3)
 
-tk.Button(frame_control, text="📄 FORM 3: INVOICE LOGS", 
+tk.Button(frame_control, text="📄 FORM 3: INVOICE LABEL", 
           command=lambda: [fip.buka_borang_invoice(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], 
           bg="#8B5CF6", **btn_form_style).pack(fill="x", pady=3)
+
+tk.Button(frame_control, text="📝 FORM 4: INVOICE FORM", 
+          command=lambda: fpb.buka_borang_pre_billing(root), 
+          bg="#1E3A8A", **btn_form_style).pack(fill="x", pady=3)
+
 
 frame_db_row = tk.Frame(frame_control, bg="white")
 frame_db_row.pack(fill="x", pady=(6, 0))

@@ -1,3 +1,4 @@
+# form_warehouse.py - PART 1: CORE DATA PROCESSING & AUTOMATIC WP SERIAL ENGINE (KALIS EXE)
 import sqlite3
 import os
 import math
@@ -9,6 +10,7 @@ import label_designer as ld
 import inner_packing_logic as ipl
 import database_batch_preview  # Menghubungkan enjin letusan 1 dialog pencetak
 from datetime import datetime
+import database_manager as dbm  # 🌟 Hubungan dinamik rasmi kalis .exe
 
 def proses_submit_data_pukal(win_wh, kamus):
     """Memproses kemasukan borang produksi dan menjana siri WP% automatik secara pukal."""
@@ -26,7 +28,8 @@ def proses_submit_data_pukal(win_wh, kamus):
     tarikh_pola, senarai_kad = datetime.now().strftime("%y%m%d"), []
     
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # 🌟 PEMBETULAN UTAMA: Menggunakan jalan database dinamik (dbm.DATABASE_PATH) yang kalis .exe
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             for idx, qty in enumerate(pecahan_qty, start=1):
                 cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (f"WP{tarikh_pola}%",))
@@ -84,7 +87,7 @@ def proses_submit_data_pukal(win_wh, kamus):
 
     except Exception as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO PROCESS DATA:\n{str(e)}", parent=win_wh)
-
+# form_warehouse.py - PART 2: SLIDER BATCH PREVIEW ENGINE & PHOTO PRINT WIZARD
 def buka_popup_pukal_slider_inner(parent, senarai_kad):
     """Enjin meluncur dinamik dengan pengiraan aspek ratio kod QR asli kilang."""
     win = tk.Toplevel(parent)
@@ -174,11 +177,10 @@ def buka_popup_pukal_slider_inner(parent, senarai_kad):
     if total_label == 1:
         # Menukar teks cetakan dan menambah butang Close bagi label tunggal
         tk.Button(fr_btn, text="🖨  PRINT ALL", command=lambda: database_batch_preview.laksanakan_windows_photo_wizard_tunggal([senarai_kad[0][0]]), bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#5A626A", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#E74C3C", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
     else:
-        # Menukar butang cetakan kelompok utama dan menggantikan Save dengan butang Close
-        tk.Button(fr_btn, text="🖨  PRINT ALL", command=cetak_semua_pukal, bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#5A626A", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="🖨  PRINT BATCH", command=cetak_semua_pukal, bg="#2ECC71", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Button(fr_btn, text="❌  CLOSE", command=win.destroy, bg="#E74C3C", **b_st).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
 
-    # Trigger paparan awal imej pertama
+    # Jalankan paparan awal
     kemaskini_selak()

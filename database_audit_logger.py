@@ -1,24 +1,27 @@
+# database_audit_logger.py - PART 1: CORE AUDIT LOG WRITER & DATA ADAPTER ENGINE (FIXED FOR EXE)
 import sqlite3
 import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
+import sys
+import database_manager as dbm  # 🌟 Hubungan dinamik pangkalan data rasmi
 
 def record_edit_activity(jenis_tab, description):
     """
     ⚡ ENJIN REKOD AUDIT LOG AUTO-TRANSAKSI (FIXED ATTRIBUTE ERROR) ⚡
-    Menyimpan data log aktiviti suntingan (Edit) ke dalam pangkalan data secara automatik
-    apabila operator menekan butang SAVE CHANGES pada panel edit.
+    Menyimpan data log aktiviti suntingan (Edit) ke dalam pangkalan data secara automatik.
     """
     try:
-        # Dapatkan tarikh dan masa semasa secara dinamik mengikut masa sistem kilang
         sekarang = datetime.datetime.now()
         tarikh_str = sekarang.strftime("%d/%m/%Y")
-        masa_str = sekarang.strftime("%I:%M:%S %p")
+        masa_str = sekarang.strftime("%i:%M:%S %p")
         
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # 🌟 PEMBETULAN UTAMA: Menggunakan pautan dbm.DATABASE_PATH yang dinamik
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             
-            # Memastikan jadual log_aktiviti wujud sekiranya belum dibina dalam SQLite
+            # Memastikan jadual log_aktiviti wujud mengikut schema rasmi sistem anda
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS log_aktiviti (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +32,6 @@ def record_edit_activity(jenis_tab, description):
                 )
             """)
             
-            # Masukkan entri suntingan baharu secara selamat (Parameterized Query)
             cursor.execute(
                 "INSERT INTO log_aktiviti (tarikh, masa, jenis_tab, description) VALUES (?, ?, ?, ?)",
                 (tarikh_str, masa_str, str(jenis_tab).strip().upper(), str(description).strip())
@@ -38,25 +40,51 @@ def record_edit_activity(jenis_tab, description):
             print(f"✔️ Audit Log Berjaya Direkod: [{jenis_tab}] {description}")
             return True
     except Exception as e:
-        # Log ralat ke konsol lantai kilang sekiranya transaksi pangkalan data sibuk
         print(f"❌ Gagal menulis ke log_aktiviti: {str(e)}")
         return False
 
 def load_edit_logs_data(tree, ent):
-    """🌟 GLOBAL SEARCH FOR ALL HEADERS (SHORT) 🌟"""
+    """🌟 GLOBAL SEARCH FOR ALL HEADERS WITH COLUMN SAFETY CHECK 🌟"""
     txt = ent.get().strip().upper()
-    for i in tree.get_children(): tree.delete(i)
+    for i in tree.get_children(): 
+        tree.delete(i)
+        
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
+            
+            # 🌟 JAMINAN KESELAMATAN SCHEMAS: Semak jika lajur lama 'tarikh' wujud, jika tiada bina secara automatik
+            cursor.execute("PRAGMA table_info(log_aktiviti)")
+            senarai_lajur = [col[1] for col in cursor.fetchall()]
+            
+            if "tarikh" not in senarai_lajur:
+                try:
+                    cursor.execute("ALTER TABLE log_aktiviti ADD COLUMN tarikh TEXT")
+                    cursor.execute("ALTER TABLE log_aktiviti ADD COLUMN masa TEXT")
+                    cursor.execute("ALTER TABLE log_aktiviti ADD COLUMN jenis_tab TEXT")
+                    cursor.execute("ALTER TABLE log_aktiviti ADD COLUMN description TEXT")
+                    conn.commit()
+                except sqlite3.OperationalError:
+                    pass
+            
             if not txt:
                 cursor.execute("SELECT id, tarikh, masa, jenis_tab, description FROM log_aktiviti ORDER BY id DESC")
             else:
                 p = f"%{txt}%"
-                cursor.execute("SELECT id, tarikh, masa, jenis_tab, description FROM log_aktiviti WHERE (id LIKE ? OR tarikh LIKE ? OR masa LIKE ? OR jenis_tab LIKE ? OR description LIKE ?) ORDER BY id DESC", (p, p, p, p, p))
-            for row in cursor.fetchall(): tree.insert("", tk.END, values=row)
-    except Exception as e: messagebox.showerror("ERROR", str(e))
+                cursor.execute("""
+                    SELECT id, tarikh, masa, jenis_tab, description FROM log_aktiviti 
+                    WHERE (id LIKE ? OR tarikh LIKE ? OR masa LIKE ? OR jenis_tab LIKE ? OR description LIKE ?) 
+                    ORDER BY id DESC
+                """, (p, p, p, p, p))
+                
+            for row in cursor.fetchall(): 
+                # Isikan baris kosong dengan text bantuan jika data lama bernilai NULL
+                isi_baris = ["" if x is None else x for x in row]
+                tree.insert("", tk.END, values=isi_baris)
+    except Exception as e: 
+        messagebox.showerror("ERROR", f"LOG LOAD FAILURE:\n{str(e)}")
 
+# database_audit_logger.py - PART 2: CLICK EVENTS & MAIN NOTEBOOK GUI INJECTION
 def show_right_click_menu(event, tree):
     """📋 RIGHT-CLICK COPY ENGINE 📋"""
     r_id, c_id = tree.identify_row(event.y), tree.identify_column(event.x)
@@ -64,11 +92,14 @@ def show_right_click_menu(event, tree):
         tree.selection_set(r_id); tree.focus(r_id)
         val = tree.item(r_id, "values")
         if val:
-            idx = int(c_id.replace("#", "")) - 1
-            cell = str(val[idx]).strip()
-            m = tk.Menu(tree, tearoff=0, bg="white", fg="black")
-            m.add_command(label=f"📋 Copy: {cell[:20]}..." if len(cell)>20 else f"📋 Copy: {cell}", command=lambda: [tree.clipboard_clear(), tree.clipboard_append(cell), tree.update()])
-            m.post(event.x_root, event.y_root)
+            try:
+                idx = int(c_id.replace("#", "")) - 1
+                cell = str(val[idx]).strip()
+                m = tk.Menu(tree, tearoff=0, bg="white", fg="black")
+                m.add_command(label=f"📋 Copy: {cell[:20]}..." if len(cell)>20 else f"📋 Copy: {cell}", command=lambda: [tree.clipboard_clear(), tree.clipboard_append(cell), tree.update()])
+                m.post(event.x_root, event.y_root)
+            except (ValueError, IndexError):
+                pass
 
 def show_right_click_paste_menu(event, ent):
     """📋 RIGHT-CLICK PASTE ENGINE 📋"""

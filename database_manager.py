@@ -4,21 +4,104 @@ import shutil
 import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
-
+# database_manager.py - FUNCTION: buka_tetingkap_database (PART 1: STATIC TAB INJECTION)
+import central_tab_inner    # 🌟 WAJIB: Import statik tegas untuk jaminan bundle .exe
+import central_tab_outer    # 🌟 WAJIB: Import statik tegas untuk jaminan bundle .exe
+import central_tab_invoice  # 🌟 WAJIB: Import statik tegas untuk jaminan bundle .exe
+import central_tab_inner_wizard
 # 1. LOCAL DYNAMIC ENVIRONMENT PATH RESOLUTION
+# 🌟 KEMASKINI LALUAN RASMI: Letakkan fail database terus di folder utama (sebelah .exe)
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-LOCAL_DATA_DIR = os.path.join(BASE_DIR, "data")
-DATABASE_PATH = os.path.join(LOCAL_DATA_DIR, "warehouse_data.db")
+# Tukar ini supaya tidak menggunakan sub-folder "data"
+DATABASE_PATH = os.path.join(BASE_DIR, "warehouse_data.db")
 
 STICKER_FOLDERS = [
     os.path.join(BASE_DIR, "INNER_STICKER"),
     os.path.join(BASE_DIR, "OUTER_STICKER"),
     os.path.join(BASE_DIR, "INVOICE_STICKER")
 ]
+
+def get_db_connection():
+    # Sambung terus ke folder utama BASE_DIR
+    conn = sqlite3.connect(DATABASE_PATH, timeout=10)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except sqlite3.OperationalError:
+        pass
+    return conn
+
+def siapkan_database():
+    for folder in STICKER_FOLDERS:
+        if not os.path.exists(folder): 
+            os.makedirs(folder, exist_ok=True)
+            
+    # Autocreate database kosong di folder utama jika fail asal tiada
+    with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
+        cursor = conn.cursor()
+        
+        # 1. Jadual Utama Rekod QR (Jarak tepi sudah diluruskan rapat ke dalam block)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rekod_qr (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                tarikh TEXT,
+                date_created TEXT, 
+                customer TEXT, 
+                drawing_no TEXT, 
+                part_no TEXT, 
+                quantity TEXT, 
+                mfg_date TEXT, 
+                machine TEXT, 
+                lotcard_no TEXT, 
+                sequence_no TEXT UNIQUE
+            )
+        """)
+        
+        # Jaminan Kolum Tarikh wujud untuk keselamatan sistem carian lama/baru
+        try:
+            cursor.execute("ALTER TABLE rekod_qr ADD COLUMN tarikh TEXT")
+        except sqlite3.OperationalError:
+            pass
+            
+        try:
+            cursor.execute("ALTER TABLE rekod_qr ADD COLUMN date_created TEXT")
+        except sqlite3.OperationalError:
+            pass
+        
+        # 2. Jadual Log Aktiviti (Audit Logs)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS log_aktiviti (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tarikh TEXT,
+                masa TEXT,
+                tarikh_masa TEXT,
+                jenis_tab TEXT,
+                jenis_borang TEXT,
+                tindakan TEXT,
+                maklumat_lama TEXT,
+                maklumat_baru TEXT,
+                description TEXT,
+                user_pc TEXT
+            )
+        """)
+        
+        # 3. Jadual Baharu Master Invoice (Form 4 Pre-Billing Entry Linkage)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS master_invoice (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_no TEXT UNIQUE,
+                so_no TEXT,
+                customer_name TEXT,
+                tarikh_masuk TEXT
+            )
+        """)
+        
+        conn.commit()
+
+
 
 def get_db_connection():
     os.makedirs(LOCAL_DATA_DIR, exist_ok=True)
@@ -34,10 +117,12 @@ def siapkan_database():
         if not os.path.exists(folder): 
             os.makedirs(folder, exist_ok=True)
             
-    os.makedirs(LOCAL_DATA_DIR, exist_ok=True)
+    os.makedirs(BASE_DIR, exist_ok=True)
     
     with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
         cursor = conn.cursor()
+        
+        # 1. Jadual Utama Rekod QR
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS rekod_qr (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -52,10 +137,39 @@ def siapkan_database():
                 sequence_no TEXT UNIQUE
             )
         """)
+        
+        # 2. Jadual Log Aktiviti (Audit Logs)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS log_aktiviti (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tarikh_masa TEXT,
+                jenis_borang TEXT,
+                tindakan TEXT,
+                maklumat_lama TEXT,
+                maklumat_baru TEXT,
+                user_pc TEXT
+            )
+        """)
+        
+        # 🌟 3. SUNTIKAN UTAMA: Bina Jadual Master Invoice untuk Form 4 Pre-Billing 🌟
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS master_invoice (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_no TEXT UNIQUE,
+                so_no TEXT,
+                customer_name TEXT,
+                tarikh_masuk TEXT
+            )
+        """)
+        
         conn.commit()
+
+
+
 
 def initialize_database_schema():
     siapkan_database()
+siapkan_database()
 
 def laksanakan_auto_clean_orphaned_logs():
     """
@@ -166,10 +280,15 @@ def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
     if is_invoice:
         import invoice_tab_logic  
         return invoice_tab_logic.papar_pratonton_invoice_terpilih(jadual, jadual.winfo_toplevel())
+        
     tanda_id = [i for i in jadual.get_children() if "☑" in str(jadual.set(i, "#1"))]
-    if not tanda_id and jadual.selection(): tanda_id = list(jadual.selection())
-    if not tanda_id: return messagebox.showwarning("Peringatan", "Sila tanda ☑ data!", parent=jadual.winfo_toplevel())
+    if not tanda_id and jadual.selection(): 
+        tanda_id = list(jadual.selection())
+        
+    if not tanda_id: 
+        return messagebox.showwarning("Peringatan", "Sila tanda ☑ atau pilih data!", parent=jadual.winfo_toplevel())
     
+    # ─── MOD 1: JIKA PILIH BANYAK ITEM (BATCH PREVIEW) ───
     if len(tanda_id) > 1:
         img_m_list = []
         if is_outer:
@@ -178,14 +297,27 @@ def gate_pratonton_seragam(jadual, root, is_outer=False, is_invoice=False):
         else:
             import central_tab_inner_logic as cti_l
             img_m_list = [cti_l.jana_grafik_label_dari_row(jadual.item(i)['values']) for i in tanda_id]
+            
         if img_m_list:
             import database_batch_preview
             return database_batch_preview.buka_popup_database_pukal_seragam(jadual.winfo_toplevel(), img_m_list, is_outer, is_invoice)
 
-    if is_outer and __import__("central_tab_outer_wizard"): 
-        __import__("central_tab_outer_wizard").buka_popup_pukal_outer_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
-    elif __import__("central_tab_inner_wizard"): 
-        __import__("central_tab_inner_wizard").buka_popup_pukal_inner_1by1([jadual.item(tanda_id)['values']], jadual.winfo_toplevel())
+    # ─── MOD 2: JIKA PILIH SATU ITEM SAHAJA (SINGLE PREVIEW - KALIS CRASH) ───
+    # 🌟 PEMBETULAN UTAMA: Ambil item pertama dari list tanda_id [0] supaya ia menjadi string murni
+    id_tunggal = tanda_id[0]
+    data_baris = jadual.item(id_tunggal)['values']
+
+    if is_outer:
+        try:
+            import central_tab_outer_wizard
+            central_tab_outer_wizard.buka_popup_pukal_outer_1by1([data_baris], jadual.winfo_toplevel())
+        except Exception as e_wiz:
+            messagebox.showerror("WIZARD ERROR", f"Outer Wizard missing context:\n{str(e_wiz)}", parent=jadual.winfo_toplevel())
+    else:
+        try:
+            central_tab_inner_wizard.buka_popup_pukal_inner_1by1([data_baris], jadual.winfo_toplevel())
+        except Exception as e_wiz:
+            messagebox.showerror("WIZARD ERROR", f"Inner Wizard missing context:\n{str(e_wiz)}", parent=jadual.winfo_toplevel())
 
 def bina_menu_klik_kanan_history(event, tree_history, root_win):
     """
@@ -373,15 +505,21 @@ def buka_tetingkap_database(root):
     tk.Button(fr, text="💥 FACTORY RESET", command=lambda: kosongkan_seluruh_database_sekarang(win, root), bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold")).pack(side=tk.RIGHT)
     
     nb = ttk.Notebook(win); nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-    def buat_tab(md, nm, f):
-        t = tk.Frame(nb); nb.add(t, text=nm); f_tp = tk.Frame(t); f_tp.pack(fill="x", padx=15, pady=5); f_tb = tk.Frame(t); f_tb.pack(fill=tk.BOTH, expand=True)
-        if __import__(md) and hasattr(__import__(md), f): 
-            getattr(__import__(md), f)(f_tb, f_tp, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
     
-    # ─── PENGEKALAN INTERFACE ASAL UTAMA ───
-    buat_tab("central_tab_inner", " INNER CODES ", "bina_tab_inner")
-    buat_tab("central_tab_outer", " OUTER BOXES ", "bina_tab_outer")
-    buat_tab("central_tab_invoice", " INVOICES SHIPPED ", "bina_tab_invoice")
+    # ─── TAB 1: INNER CODES (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    t1 = tk.Frame(nb); nb.add(t1, text=" INNER CODES ")
+    f_tp1 = tk.Frame(t1); f_tp1.pack(fill="x", padx=15, pady=5); f_tb1 = tk.Frame(t1); f_tb1.pack(fill=tk.BOTH, expand=True)
+    central_tab_inner.bina_tab_inner(f_tb1, f_tp1, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+    # ─── TAB 2: OUTER BOXES (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    t2 = tk.Frame(nb); nb.add(t2, text=" OUTER BOXES ")
+    f_tp2 = tk.Frame(t2); f_tp2.pack(fill="x", padx=15, pady=5); f_tb2 = tk.Frame(t2); f_tb2.pack(fill=tk.BOTH, expand=True)
+    central_tab_outer.bina_tab_outer(f_tb2, f_tp2, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+    # ─── TAB 3: INVOICES SHIPPED (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    t3 = tk.Frame(nb); nb.add(t3, text=" INVOICES SHIPPED ")
+    f_tp3 = tk.Frame(t3); f_tp3.pack(fill="x", padx=15, pady=5); f_tb3 = tk.Frame(t3); f_tb3.pack(fill=tk.BOTH, expand=True)
+    central_tab_invoice.bina_tab_invoice(f_tb3, f_tp3, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
     
     try:
         import database_audit_logger
@@ -422,4 +560,13 @@ def buka_tetingkap_database(root):
 
     ent_search_hist.bind("<Return>", lambda event: jejak_sejarah_label(ent_search_hist, tree_history))
     
+   # ... (Baris terakhir kod Bahagian 2 panel database anda) ...
+    try:
+        ent_search_hist.bind("<Return>", lambda event: jejak_sejarah_label(ent_search_hist, tree_history))
+    except Exception:
+        pass
+    
     return nb
+
+# 🌟 LETAK DI SINI (Baris paling akhir sekali dalam fail database_manager.py)
+siapkan_database()
