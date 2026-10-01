@@ -15,7 +15,8 @@ def record_edit_activity(jenis_tab, description):
     try:
         sekarang = datetime.datetime.now()
         tarikh_str = sekarang.strftime("%d/%m/%Y")
-        masa_str = sekarang.strftime("%i:%M:%S %p")
+        # 🌟 FIX: Menukar %i kepada %I untuk format jam 12-jam yang sah dalam Python
+        masa_str = sekarang.strftime("%I:%M:%S %p")
         
         # 🌟 PEMBETULAN UTAMA: Menggunakan pautan dbm.DATABASE_PATH yang dinamik
         with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:

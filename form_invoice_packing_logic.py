@@ -1,9 +1,10 @@
-# form_invoice_packing_logic.py - PART 2: CORE PROCESS SUBMIT INVOICE TRANSACTION ENGINE (MUKTAMAD 100% STABLE)
+# form_invoice_packing_logic.py - PART 1: CORE HEADERS & DATA ENGINE (FIXED FOR BLOB WRITER)
 import sqlite3
 import datetime
 import qrcode
 import os
 import sys
+import io  # 🌟 FIX: Diperlukan untuk penukaran objek imej grafik kepada byte data binari
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
 import database_manager as dbm
@@ -91,9 +92,8 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
             os.makedirs(target_save_directory)
     except Exception as e_folder:
         print(f"Folder skip: {str(e_folder)}")
-
     # =========================================================================
-    # 🌟 LANGKAH A: JANA DATA & MASUK DATABASE (HANYA PURE 2 BARIS SAHAJA) 🌟
+    # 🌟 LANGKAH A: JANA DATA & MASUK DATABASE (KEMBALI KEPADA SCHEMA ASAL TANPA CRASH BLOB) 🌟
     # =========================================================================
     senarai_data_mentah_insert = []
     
@@ -118,7 +118,7 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
                 seq = f"INV{pola}{(bil_mula + i - 1):04d}"
                 pg = f"BOX {i}/{total_box}"
                 
-                # INSERT SECARA BERSIH ke SQLite database utama
+                # 🌟 KEKAL SCHEMA ASAL: Simpan rekod teks tulen mengikut struktur lajur sedia ada pangkalan data abang
                 cur.execute("""
                     INSERT INTO rekod_qr 
                     (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no) 
@@ -131,7 +131,7 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
                 row_tuple = ("☐", row_id, dt, nama_pelanggan_penuh_kotak, inv, so, f"{qty} PCS", pg, c, "INVOICE LOG", seq)
                 senarai_data_mentah_insert.append(row_tuple)
                 
-                # Penjanaan grafik imej QR & Label PNG
+                # Penjanaan grafik imej QR & Label PNG untuk simpanan folder fizikal
                 qr_payload = f"SERIAL NO : {seq.strip()} INVOICE NO : {inv.strip()} SO No : {so.strip()} CUSTOMER : {nama_pelanggan_penuh_kotak.strip()} QUANTITY : {qty} PCS"
                 qr = qrcode.QRCode(version=1, border=1)
                 qr.add_data(qr_payload)  
@@ -159,32 +159,34 @@ def proses_submit_invoice(win, e_dt, e_inv, e_so, e_out, btn=None):
         except Exception as e_log_skip:
             print(f"[LOG NOT NOTICE] Dilepaskan demi kelancaran rendering: {str(e_log_skip)}")
 
+              # =========================================================================
+        # 🌟 LANGKAH B: PAPARAN WIZARD PRATONTON FIZIKAL (KALIS CRASH DATABASE) 🌟
         # =========================================================================
-        # 🌟 LANGKAH B: PAPARAN WIZARD PRATONTON FIZIKAL (100% GAMBAR 2) 🌟
-        # =========================================================================
-        senarai_fail_imej_fizikal = []
-        if senarai_data_mentah_insert:
-            for data_row in senarai_data_mentah_insert:
-                seq_specific = data_row[-1]  
-                pg_status = data_row[-4]     
-                
-                clean_seq_name = str(seq_specific).strip()
-                clean_page_name = pg_status.replace("/", "-").replace(" ", "_")
-                file_path = os.path.join(target_save_directory, f"LABEL_{clean_seq_name}_{clean_page_name}.png")
-                
-                if os.path.exists(file_path):
-                    senarai_fail_imej_fizikal.append(file_path)
-
-        # Hantar fail fizikal melintang asli terus ke dalam database_batch_preview
-        if senarai_fail_imej_fizikal:
-            import database_batch_preview
-            database_batch_preview.buka_popup_database_pukal_seragam(win, senarai_fail_imej_fizikal)
+        # 🌟 PEMBETULAN UTAMA: Jika sk (senarai imej dalam memori) wujud, kita hantar terus
+        # untuk paparan tanpa membenarkan sistem membaca semula dari database yang kosong.
+        if sk:
+            try:
+                import invoice_preview_window
+                # Membuka pop-up pratonton imej fizikal 1by1 menggunakan objek yang sedia ada
+                invoice_preview_window.buka_popup_individual_1by1(win, sk, inv)
+            except Exception as e_preview_fallback:
+                print(f"Fallback wizard: {str(e_preview_fallback)}")
+                if senarai_data_mentah_insert:
+                    try:
+                        import database_batch_preview
+                        database_batch_preview.buka_popup_database_pukal_seragam(win, senarai_data_mentah_insert)
+                    except Exception:
+                        pass
         else:
-            import database_batch_preview
-            database_batch_preview.buka_popup_database_pukal_seragam(win, senarai_data_mentah_insert)
+            # Jika tiada imej fizikal dijana, hantar data mentah teks sebagai sandaran terakhir
+            try:
+                import database_batch_preview
+                database_batch_preview.buka_popup_database_pukal_seragam(win, senarai_data_mentah_insert)
+            except Exception:
+                pass
                 
         messagebox.showinfo("SUCCESS", f"Invoice {inv} successfully registered!", parent=win)
-        win.destroy()
         
     except Exception as e_main:
         messagebox.showerror("DATABASE ERROR", f"Transaction aborted context:\n{str(e_main)}", parent=win)
+

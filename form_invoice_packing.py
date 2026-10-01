@@ -146,7 +146,7 @@ def buka_borang_invoice(root):
   
 
     # 🟠 TUKAR WARNA BUTANG APPLY KEPADA OREN (#FD7E14)
-    tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#FD7E14", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
+   # tk.Button(frame_row_setup, text="APPLY", command=aksi_apply_total_box, bg="#FD7E14", fg="white", font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2", padx=10).pack(side=tk.LEFT, padx=5)
     
     lbl_counter = tk.Label(frame_row_setup, text="Scanned: 0 / 4 Boxes", font=("Segoe UI", 9, "bold"), fg="#64748B", bg="#F8F9FA")
     lbl_counter.pack(side=tk.RIGHT, padx=5)
