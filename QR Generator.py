@@ -1,7 +1,7 @@
 # 🌟 KOD BAHARU YANG BETUL (DITAMBAH filedialog) 🌟
 import os 
 import sys
-import socket
+import socket 
 import ctypes
 import platform 
 import tkinter as tk 

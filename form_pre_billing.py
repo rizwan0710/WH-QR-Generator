@@ -9,7 +9,7 @@ import database_manager as dbm
 import custom_dropdown as cd
 
 def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
-    """Menyimpan data pendaftaran awal invois dan SO ke dalam jadual master_invoice kilang."""
+    """Menyimpan data pendaftaran awal invois dan SO ke dalam jadual master_invoice kilang dengan status Pending."""
     inv_no = invoice_ent.get().strip().upper()
     so_no = so_ent.get().strip().upper()
     cust_name = customer_ent.get().strip().upper()
@@ -24,11 +24,11 @@ def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
         with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             
-            # Memasukkan rekod invois secara parameterized query untuk jaminan integriti data
+            # 🌟 KEMASKINI UTAMA: Memasukkan lajur 'status' secara eksplikat bernilai 'Pending'
             cursor.execute("""
-                INSERT INTO master_invoice (invoice_no, so_no, customer_name, tarikh_masuk)
-                VALUES (?, ?, ?, ?)
-            """, (inv_no, so_no, cust_name, tarikh_sekarang))
+                INSERT INTO master_invoice (invoice_no, so_no, customer_name, tarikh_masuk, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (inv_no, so_no, cust_name, tarikh_sekarang, "Pending"))
             
             conn.commit()
             
@@ -39,7 +39,7 @@ def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
         except Exception:
             pass
 
-        messagebox.showinfo("SUCCESS", f"Pre-Billing Data successfully registered!\n\n🔹 Invoice No: {inv_no}\n🔹 SO No: {so_no}\n🔹 Customer: {cust_name}", parent=win)
+        messagebox.showinfo("SUCCESS", f"Pre-Billing Data successfully registered!\n\n🔹 Invoice No: {inv_no}\n🔹 SO No: {so_no}\n🔹 Customer: {cust_name}\n🔹 Status: Pending", parent=win)
         
         # Kosongkan isian borang untuk persediaan data kemasukan seterusnya
         invoice_ent.delete(0, tk.END)

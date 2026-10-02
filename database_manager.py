@@ -1,3 +1,4 @@
+#part 1
 import sqlite3
 import os
 import shutil
@@ -88,19 +89,84 @@ def siapkan_database():
             )
         """)
         
-        # 3. Jadual Baharu Master Invoice (Form 4 Pre-Billing Entry Linkage)
+                # 🌟 3. SUNTIKAN UTAMA: Cipta Jadual Master Invoice dengan Lajur Status 🌟
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS master_invoice (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 invoice_no TEXT UNIQUE,
                 so_no TEXT,
                 customer_name TEXT,
-                tarikh_masuk TEXT
+                tarikh_masuk TEXT,
+                status TEXT DEFAULT 'Pending'
             )
         """)
         
-        conn.commit()
+        # Jaminan Struktur: Tambah lajur status jika fail database lama sudah wujud tanpa lajur ini
+        try:
+            cursor.execute("ALTER TABLE master_invoice ADD COLUMN status TEXT DEFAULT 'Pending'")
+        except sqlite3.OperationalError:
+            pass
 
+def ambil_semua_master_invoice(keyword=""):
+    """Menarik semua data dari jadual master_invoice termasuk SO No untuk dipaparkan pada tab baharu."""
+    try:
+        with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
+            cursor = conn.cursor()
+            if keyword:
+                pola = f"%{keyword}%"
+                cursor.execute("""
+                    SELECT id, invoice_no, so_no, customer_name, tarikh_masuk, status 
+                    FROM master_invoice 
+                    WHERE invoice_no LIKE ? OR so_no LIKE ? OR customer_name LIKE ? 
+                    ORDER BY id DESC
+                """, (pola, pola, pola))
+            else:
+                cursor.execute("SELECT id, invoice_no, so_no, customer_name, tarikh_masuk, status FROM master_invoice ORDER BY id DESC")
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"[DB ERROR] Gagal ambil data master invoice: {str(e)}")
+        return []
+
+
+def kemaskini_status_master_invoice(invoice_id, status_baru):
+    """Mengemas kini status invois (Pending/Complete) berdasarkan pilihan Dropdown/Combobox di UI."""
+    try:
+        with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE master_invoice SET status = ? WHERE id = ?", (status_baru, invoice_id))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"[DB ERROR] Gagal update status invoice ID {invoice_id}: {str(e)}")
+        return False
+
+def padam_master_invoice_terpilih(tree_table):
+    """Memadam baris rekod invois terdaftar yang dipilih atau ditanda oleh pengguna."""
+    tanda = [i for i in tree_table.get_children() if "☑" in str(tree_table.item(i)['values'])]
+    if not tanda and tree_table.selection():
+        tanda = list(tree_table.selection())
+        
+    if not tanda:
+        return messagebox.showwarning("Peringatan", "Sila pilih atau tanda ☑ data invoice!", parent=tree_table.winfo_toplevel())
+        
+    if messagebox.askyesno("Pengesahan", f"Padam {len(tanda)} invoice terdaftar dari sistem?", parent=tree_table.winfo_toplevel()):
+        try:
+            with sqlite3.connect(DATABASE_PATH, timeout=10) as conn:
+                cursor = conn.cursor()
+                for i in tanda:
+                    nilai_baris = tree_table.item(i)['values']
+                    if nilai_baris and len(nilai_baris) > 1:
+                        # Ambil ID Tulen pangkalan data (Lajur Indeks 1)
+                        id_db = int(nilai_baris[1])
+                        cursor.execute("DELETE FROM master_invoice WHERE id = ?", (id_db,))
+                conn.commit()
+                
+            for i in tanda:
+                tree_table.delete(i)
+                
+            messagebox.showinfo("Berjaya", "Rekod invoice terdaftar berjaya dipadam!", parent=tree_table.winfo_toplevel())
+        except Exception as e:
+            messagebox.showerror("DATABASE ERROR", f"Gagal memadam invoice: {str(e)}", parent=tree_table.winfo_toplevel())
 
 
 def get_db_connection():
@@ -151,18 +217,29 @@ def siapkan_database():
             )
         """)
         
-        # 🌟 3. SUNTIKAN UTAMA: Bina Jadual Master Invoice untuk Form 4 Pre-Billing 🌟
+        # 3. Jadual Master Invoice untuk Form 4 Pre-Billing
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS master_invoice (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 invoice_no TEXT UNIQUE,
                 so_no TEXT,
                 customer_name TEXT,
-                tarikh_masuk TEXT
+                tarikh_masuk TEXT,
+                status TEXT DEFAULT 'Pending'
             )
         """)
         
+        # 🌟 SUNTIKAN PEMBETULAN TEGAR: Paksa SQLite tambah lajur 'status' jika ia belum wujud dalam db lama anda!
+        try:
+            cursor.execute("ALTER TABLE master_invoice ADD COLUMN status TEXT DEFAULT 'Pending'")
+            conn.commit()
+            print("[MIGRATION SUCCESS] Lajur 'status' berjaya disuntik ke database lama!")
+        except sqlite3.OperationalError:
+            # Lajur sudah wujud, boleh abaikan ralat ini dengan selamat
+            pass
+            
         conn.commit()
+
 
 
 
@@ -218,7 +295,7 @@ def laksanakan_auto_clean_orphaned_logs():
             conn.commit()
     except Exception as e:
         print(f"[REFRESH CLEAN ERROR] Gagal bersihkan data yatim: {str(e)}")
-
+#part 2
 def kosongkan_seluruh_database_sekarang(win, root):
     if messagebox.askyesno("AMARAN", "Padam KESEMUA DATA secara kekal?", parent=win):
         with sqlite3.connect(DATABASE_PATH, timeout=10) as conn: 
@@ -355,7 +432,7 @@ def bina_menu_klik_kanan_history(event, tree_history, root_win):
         menu_popup.add_command(label=f"📋 Copy Invoice No ({inv_val})", command=lambda: salin_ke_clipboard(inv_val))
             
     menu_popup.post(event.x_root, event.y_root)
-
+#part 3
 def jejak_sejarah_label(entry_search, tree_history):
     """
     🔍 ENJIN PADANAN SUBSTRING LONGGAR (LOOSE SUBSTRING MATCHING ENGINE) 🔍
@@ -488,13 +565,110 @@ def jejak_sejarah_label(entry_search, tree_history):
 
     except Exception as e:
         messagebox.showerror("TRACKING ERROR", f"No Label History:\n{str(e)}")
+    # ─── 🌟 SUNTIKAN TAB BARU: INVOICES REGISTERED (CENTRAL TRACKING HUB) 🌟 ───
+    t_reg = tk.Frame(nb)
+    nb.add(t_reg, text=" 📑 INVOICES REGISTERED ")
+    
+    # 1. Barisan Kawalan Carian & Butang Aksi Atas
+    fr_ctrl_reg = tk.Frame(t_reg, bg="#F8FAFC", pady=8, padx=10)
+    fr_ctrl_reg.pack(fill="x")
+    
+    tk.Label(fr_ctrl_reg, text="Search Invoice/Customer:", font=("Segoe UI", 9, "bold"), bg="#F8FAFC").pack(side="left", padx=5)
+    ent_search_reg = tk.Entry(fr_ctrl_reg, font=("Segoe UI", 10), width=25)
+    ent_search_reg.pack(side="left", padx=5)
+    
+    # 2. Pembinaan Jadual Treeview Utama
+    lajur_reg = ("Tanda", "ID", "Invoice Number", "Customer Name", "Registration Date", "Status Tracking")
+    tree_reg = ttk.Treeview(t_reg, columns=lajur_reg, show="headings", selectmode="browse")
+    tree_reg.pack(fill="both", expand=True, padx=10, pady=5)
+    
+    for col in lajur_reg:
+        tree_reg.heading(col, text=col, anchor="center")
+        tree_reg.column(col, width=150, anchor="center")
+    tree_reg.column("Tanda", width=60, anchor="center")
+    tree_reg.column("ID", width=60, anchor="center") # Untuk rujukan ID Database tersembunyi/kecil
+    tree_reg.column("Customer Name", width=250, anchor="w")
+    
+    # Senarai widget combobox aktif untuk mengelakkan isu memori bertumpuk semasa refresh
+    combobox_widgets = []
+def muat_data_invoice_registered_global(win, tree_reg, ent_search_reg, combobox_widgets):
+    """Mengisi jadual data invois berdaftar dengan suntikan gaya warna flat moden tanpa ralat lekukan."""
+    for cb in combobox_widgets:
+        try: cb.destroy()
+        except: pass
+    combobox_widgets.clear()
+    
+    for item in tree_reg.get_children():
+        tree_reg.delete(item)
+        
+    keyword = ent_search_reg.get().strip()
+    rekod = ambil_semua_master_invoice(keyword)
+    
+    style = ttk.Style()
+    style.theme_use('clam')
+    
+    for r in rekod:
+        db_id, inv_no, so_no, cust, tkh, status_semasa = r
+        item_id = tree_reg.insert("", "end", values=("☐", db_id, inv_no, so_no, cust, tkh, status_semasa))
+        
+        win.update_idletasks()
+        bbox = tree_reg.bbox(item_id, "Status Tracking")
+        if bbox:
+            x, y, w, h = bbox
+            
+            style_name = f"Combo_{db_id}.TCombobox"
+            cb = ttk.Combobox(tree_reg, values=["Pending", "Complete"], state="readonly", width=12, style=style_name)
+            cb.set(status_semasa)
+            cb.place(x=x, y=y, width=w, height=h)
+            
+            def kemaskini_warna_dropdown(c_box, status, s_name):
+                if status == "Complete":
+                    style.configure(s_name, fieldbackground="#22C55E", background="#16A34A", foreground="white", arrowcolor="white", borderwidth=0, relief="flat")
+                else:
+                    style.configure(s_name, fieldbackground="#EAB308", background="#CA8A04", foreground="black", arrowcolor="black", borderwidth=0, relief="flat")
+
+            kemaskini_warna_dropdown(cb, status_semasa, style_name)
+            
+            def membuat_event_tukar(i_id=db_id, c_box=cb, s_name=style_name, current_item=item_id):
+                def event_dalaman(event):
+                    status_baru = c_box.get()
+                    if kemaskini_status_master_invoice(i_id, status_baru):
+                        kemaskini_warna_dropdown(c_box, status_baru, s_name)
+                        tree_reg.set(current_item, "Status Tracking", status_baru)
+                return event_dalaman
+                    
+            cb.bind("<<ComboboxSelected>>", membuat_event_tukar())
+            combobox_widgets.append(cb)
+
+def klik_sel_tanda_invoice_global(event, tree_reg):
+    """Mengendalikan fungsi tanda kotak semak secara global."""
+    item_click = tree_reg.identify_row(event.y)
+    col_click = tree_reg.identify_column(event.x)
+    if item_click and col_click == "#1":
+        nilai_baris = list(tree_reg.item(item_click)['values'])
+        if nilai_baris and len(nilai_baris) > 0:
+            tanda_asal = str(nilai_baris[0]).strip()
+            tanda_baru = "☑" if tanda_asal == "☐" else "☐"
+            tree_reg.set(item_click, "Select", tanda_baru)
 
 
+    # Sambungkan Butang-butang Kawalan Tab Baharu
+    tk.Button(fr_ctrl_reg, text="🔍 SEARCH", command=muat_data_invoice_registered, bg="#1E3A8A", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="🔄 REFRESH", command=lambda: [ent_search_reg.delete(0, tk.END), muat_data_invoice_registered()], bg="#0D9488", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="🗑️ DELETE SELECTED", command=lambda: [padam_master_invoice_terpihal(tree_reg), muat_data_invoice_registered()], bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
+    
+    # Butang kembali ke menu utama diletakkan rapat ke bahagian kanan tab
+    tk.Button(fr_ctrl_reg, text="◀ BACK ", command=win.destroy, bg="#6C757D", fg="white", font=("Segoe UI", 9, "bold"), width=15, relief="flat", cursor="hand2").pack(side=tk.RIGHT, padx=5)
+    
+    # Muat data secara automatik apabila tab pertama kali dibuka
+    muat_data_invoice_registered()
+
+#part 4
 def buka_tetingkap_database(root):
     """
-    Tetingkap pengurusan database utama (Koreksi format Notebook return asal).
-    Menghidupkan semula semua tab asal agar data dibaca oleh QR Generator.py,
-    sambil mendaftarkan tab baharu LABEL HISTORY berserta butang BACK TO MAIN.
+    Tetingkap pengurusan database utama.
+    Menjamin kesemua 6 tab (Inner, Outer, Shipped, Registered, Edit Logs, History)
+    muncul serentak tanpa ada yang tercicir.
     """
     win = tk.Toplevel(root); win.title("SYSTEM DATABASE MANAGEMENT PANEL"); win.geometry("1300x680+50+20"); win.transient(root)
     tutup = lambda: [win.grab_release(), tk.Toplevel.destroy(win)]
@@ -506,28 +680,164 @@ def buka_tetingkap_database(root):
     
     nb = ttk.Notebook(win); nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
     
-    # ─── TAB 1: INNER CODES (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    # ─── TAB 1: INNER CODES ───
     t1 = tk.Frame(nb); nb.add(t1, text=" INNER CODES ")
     f_tp1 = tk.Frame(t1); f_tp1.pack(fill="x", padx=15, pady=5); f_tb1 = tk.Frame(t1); f_tb1.pack(fill=tk.BOTH, expand=True)
     central_tab_inner.bina_tab_inner(f_tb1, f_tp1, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
 
-    # ─── TAB 2: OUTER BOXES (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    # ─── TAB 2: OUTER BOXES ───
     t2 = tk.Frame(nb); nb.add(t2, text=" OUTER BOXES ")
     f_tp2 = tk.Frame(t2); f_tp2.pack(fill="x", padx=15, pady=5); f_tb2 = tk.Frame(t2); f_tb2.pack(fill=tk.BOTH, expand=True)
     central_tab_outer.bina_tab_outer(f_tb2, f_tp2, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
 
-    # ─── TAB 3: INVOICES SHIPPED (DIPANGGIL SECARA STATIK KALIS EXE) ───
+    # ─── TAB 3: INVOICES SHIPPED ───
     t3 = tk.Frame(nb); nb.add(t3, text=" INVOICES SHIPPED ")
     f_tp3 = tk.Frame(t3); f_tp3.pack(fill="x", padx=15, pady=5); f_tb3 = tk.Frame(t3); f_tb3.pack(fill=tk.BOTH, expand=True)
     central_tab_invoice.bina_tab_invoice(f_tb3, f_tp3, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+    # ─── TAB 4: INVOICES REGISTERED ───
+    t_reg = tk.Frame(nb)
+    nb.add(t_reg, text=" 📑 INVOICES REGISTERED ")
     
+    fr_ctrl_reg = tk.Frame(t_reg, bg="#F1F5F9", pady=6, padx=10)
+    fr_ctrl_reg.pack(fill="x")
+    
+    tk.Label(fr_ctrl_reg, text="Search Invoice/SO/Customer:", font=("Segoe UI", 9, "bold"), bg="#F1F5F9").pack(side="left", padx=5)
+    ent_search_reg = tk.Entry(fr_ctrl_reg, font=("Segoe UI", 10), width=25)
+    ent_search_reg.pack(side="left", padx=5)
+    
+    lajur_reg = ("Select", "ID", "Invoice Number", "SO Number", "Customer Name", "Registration Date", "Status Tracking")
+    tree_reg = ttk.Treeview(t_reg, columns=lajur_reg, show="headings", selectmode="browse")
+    tree_reg.pack(fill="both", expand=True, padx=10, pady=5)
+    
+    for col in lajur_reg:
+        tree_reg.heading(col, text=col, anchor="center")
+        tree_reg.column(col, width=130, anchor="center")
+    tree_reg.column("Select", width=60, anchor="center")
+    tree_reg.column("ID", width=50, anchor="center")
+    tree_reg.column("Customer Name", width=250, anchor="w")
+    tree_reg.column("Status Tracking", width=140, anchor="center")
+    
+    combobox_widgets = []
+
+    def muat_data_invoice_registered():
+        for cb in combobox_widgets:
+            try: cb.destroy()
+            except: pass
+        combobox_widgets.clear()
+        
+        for item in tree_reg.get_children():
+            tree_reg.delete(item)
+            
+        keyword = ent_search_reg.get().strip()
+        rekod = ambil_semua_master_invoice(keyword)
+        
+        # 🎨 SUNTIKAN ENJIN MODEN ELEMEN COMBOCBOX FLAT
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        for r in rekod:
+            db_id, inv_no, so_no, cust, tkh, status_semasa = r
+            item_id = tree_reg.insert("", "end", values=("☐", db_id, inv_no, so_no, cust, tkh, status_semasa))
+            
+            win.update_idletasks()
+            bbox = tree_reg.bbox(item_id, "Status Tracking")
+            if bbox:
+                x, y, w, h = bbox
+                
+                # Cipta elemen gaya flat unik bagi setiap baris rekod
+                style_name = f"Combo_{db_id}.TCombobox"
+                cb = ttk.Combobox(tree_reg, values=["Pending", "Complete"], state="readonly", width=12, style=style_name)
+                cb.set(status_semasa)
+                cb.place(x=x, y=y, width=w, height=h)
+                
+                # Fungsi menukar warna penuh flat yang sangat kemas
+                def kemaskini_warna_dropdown(c_box, status, s_name):
+                    if status == "Complete":
+                        # Warna Hijau Flat (Teks Putih)
+                        style.configure(s_name, 
+                                        fieldbackground="#22C55E", 
+                                        background="#16A34A", 
+                                        foreground="white", 
+                                        arrowcolor="white",
+                                        borderwidth=0,
+                                        relief="flat")
+                    else:
+                        # Warna Kuning Cerah Flat (Teks Hitam)
+                        style.configure(s_name, 
+                                        fieldbackground="#EAB308", 
+                                        background="#CA8A04", 
+                                        foreground="black", 
+                                        arrowcolor="black",
+                                        borderwidth=0,
+                                        relief="flat")
+
+                # Cetus warna flat untuk pusingan pertama
+                kemaskini_warna_dropdown(cb, status_semasa, style_name)
+                
+                # Fungsi penukaran interaktif apabila di-klik
+                def membuat_event_tukar(i_id=db_id, c_box=cb, s_name=style_name, current_item=item_id):
+                    def event_dalaman(event):
+                        status_baru = c_box.get()
+                        if kemaskini_status_master_invoice(i_id, status_baru):
+                            kemaskini_warna_dropdown(c_box, status_baru, s_name)
+                            tree_reg.set(current_item, "Status Tracking", status_baru)
+                    return event_dalaman
+                
+                # Ikatkan event pilihan pertukaran combobox
+                cb.bind("<<ComboboxSelected>>", membuat_event_tukar())
+                combobox_widgets.append(cb)
+
+    def klik_sel_tanda_invoice(event):
+        item_click = tree_reg.identify_row(event.y)
+        col_click = tree_reg.identify_column(event.x)
+        if item_click and col_click == "#1":
+            nilai_baris = list(tree_reg.item(item_click)['values'])
+            if nilai_baris and len(nilai_baris) > 0:
+                tanda_asal = str(nilai_baris[0]).strip()
+                tanda_baru = "☑" if tanda_asal == "☐" else "☐"
+                tree_reg.set(item_click, "Select", tanda_baru)
+
+    tree_reg.bind("<Button-1>", klik_sel_tanda_invoice)
+
+    # ─── BUTTONS KAWALAN AKSI STANDARD KILANG OHTA (SAIZ & SUSUNAN LENGKAP SERAGAM) ───
+    # Membuang pady piksel teks dan menetapkan height=1 serta bd=0 untuk kesan flat seiras tab lama
+    gaya_btn = {
+        "font": ("Segoe UI", 9, "bold"), 
+        "fg": "white", 
+        "relief": "flat", 
+        "bd": 0, 
+        "height": 1, 
+        "padx": 15, 
+        "cursor": "hand2"
+    }
+    
+    # Kelompok Kiri: Carian & Pemadaman (Susunan Seragam)
+    tk.Button(fr_ctrl_reg, text="SEARCH", command=muat_data_invoice_registered, bg="#007BFF", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="RESET", command=lambda: [ent_search_reg.delete(0, tk.END), muat_data_invoice_registered()], bg="#6C757D", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="DELETE", command=lambda: [padam_master_invoice_terpilih(tree_reg), muat_data_invoice_registered()], bg="#DC3545", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    
+      # Kelompok Kanan: REFRESH dimasukkan dahulu supaya duduk di paling kanan sekali, diikuti BACK TO MAIN di kirinya
+    tk.Button(fr_ctrl_reg, text="REFRESH", command=muat_data_invoice_registered, bg="#0D9488", **gaya_btn).pack(side=tk.RIGHT, padx=3)
+    tk.Button(fr_ctrl_reg, text="BACK TO MAIN", command=win.destroy, bg="#6C757D", **gaya_btn).pack(side=tk.RIGHT, padx=3)
+
+
+
+    ent_search_reg.bind("<Return>", lambda event: muat_data_invoice_registered())
+    muat_data_invoice_registered()
+
+
+
+
+
+    # ─── TAB 5: EDIT LOGS (AUDIT) ───
     try:
         import database_audit_logger
         database_audit_logger.suntik_tab_audit_logs_ke_notebook(nb, win)
     except Exception:
         pass
         
-    # ─── 🌟 SUNTIKAN TAB BARU LABEL HISTORY BERSERTA BUTANG BACK 🌟 ───
+    # ─── TAB 6: LABEL HISTORY ───
     tab_history = tk.Frame(nb)
     nb.add(tab_history, text=" 🔍 LABEL HISTORY ")
     
@@ -548,25 +858,13 @@ def buka_tetingkap_database(root):
     tree_history.column("Description of Connections", width=420, anchor="w")
     tree_history.column("Inner Sequence", width=120, anchor="center")
     
-    # 🌟 SUNTIKAN UTAMA: Ikat fungsi klik kanan pada jadual history tanpa ubah kod lain! 🌟
     tree_history.bind("<Button-3>", lambda event: bina_menu_klik_kanan_history(event, tree_history, win))
     
-    # Barisan Butang Kawalan Kiri & Kanan (Suntikan Butang Back Sempurna)
-    tk.Button(fr_ctrl_hist, text="🔍 TRACE SEQUENCE", command=lambda: jejak_sejarah_label(ent_search_hist, tree_history), bg="#1E3A8A", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, cursor="hand2").pack(side=tk.LEFT, padx=3)
-    tk.Button(fr_ctrl_hist, text="🔄 RESET", command=lambda: [ent_search_hist.delete(0, tk.END), [tree_history.delete(x) for x in tree_history.get_children()]], bg="#64748B", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, cursor="hand2").pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_hist, text="🔍 TRACE SEQUENCE", command=lambda: jejak_sejarah_label(ent_search_hist, tree_history), bg="#1E3A8A", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_hist, text="🔄 RESET", command=lambda: [ent_search_hist.delete(0, tk.END), [tree_history.delete(x) for x in tree_history.get_children()]], bg="#64748B", **gaya_btn).pack(side=tk.LEFT, padx=3)
     
-    # 🌟 DIKEMASKINI: Menambah Butang BACK TO MAIN rapat di sebelah kanan tab kawalan
-    tk.Button(fr_ctrl_hist, text="◀ BACK ", command=win.destroy, bg="#6C757D", fg="white", font=("Segoe UI", 9, "bold"), width=16, relief="flat", cursor="hand2").pack(side=tk.RIGHT, padx=5)
+    tk.Button(fr_ctrl_hist, text="◀ BACK ", command=win.destroy, bg="#6C757D", **gaya_btn).pack(side=tk.RIGHT, padx=5)
 
     ent_search_hist.bind("<Return>", lambda event: jejak_sejarah_label(ent_search_hist, tree_history))
     
-   # ... (Baris terakhir kod Bahagian 2 panel database anda) ...
-    try:
-        ent_search_hist.bind("<Return>", lambda event: jejak_sejarah_label(ent_search_hist, tree_history))
-    except Exception:
-        pass
-    
     return nb
-
-# 🌟 LETAK DI SINI (Baris paling akhir sekali dalam fail database_manager.py)
-siapkan_database()
