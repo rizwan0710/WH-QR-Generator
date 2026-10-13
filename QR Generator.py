@@ -4,7 +4,8 @@ import sys
 import socket 
 import ctypes
 import platform 
-import tkinter as tk 
+import tkinter as tk
+from tkinter import simpledialog, messagebox
 from tkinter import messagebox, filedialog, ttk  # <-- Sila selit filedialog di sini!
 from datetime import datetime
 
@@ -114,8 +115,28 @@ tk.Button(frame_control, text="📄 FORM 3: INVOICE LABEL",
           command=lambda: [fip.buka_borang_invoice(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], 
           bg="#8B5CF6", **btn_form_style).pack(fill="x", pady=3)
 
+def sahkan_dan_buka_form_4():
+    PASSWORD_SEBENAR = "pcon123" 
+    
+    # Fungsi askstring di sini sudah betul kerana ada 2 parameter: "Production Control" dan "Password :"
+    kata_laluan = simpledialog.askstring(
+        "Production Control", 
+        "Password :", 
+        show="*"
+    )
+    
+    if kata_laluan is not None:
+        if kata_laluan == PASSWORD_SEBENAR:
+            fpb.buka_borang_pre_billing(root)
+        else:
+            messagebox.showerror(
+                "Access Denied", 
+                "Wrong Password"
+            )
+
+# 2. Tukar command butang untuk panggil fungsi di atas
 tk.Button(frame_control, text="📝 FORM 4: INVOICE FORM", 
-          command=lambda: fpb.buka_borang_pre_billing(root), 
+          command=sahkan_dan_buka_form_4, 
           bg="#1E3A8A", **btn_form_style).pack(fill="x", pady=3)
 
 
