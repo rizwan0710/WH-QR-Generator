@@ -565,137 +565,7 @@ def jejak_sejarah_label(entry_search, tree_history):
 
     except Exception as e:
         messagebox.showerror("TRACKING ERROR", f"No Label History:\n{str(e)}")
-    # ─── 🌟 SUNTIKAN TAB BARU: INVOICES REGISTERED (CENTRAL TRACKING HUB) 🌟 ───
-    t_reg = tk.Frame(nb)
-    nb.add(t_reg, text=" 📑 INVOICES REGISTERED ")
-    
-    # 1. Barisan Kawalan Carian & Butang Aksi Atas
-    fr_ctrl_reg = tk.Frame(t_reg, bg="#F8FAFC", pady=8, padx=10)
-    fr_ctrl_reg.pack(fill="x")
-    
-    tk.Label(fr_ctrl_reg, text="Search Invoice/Customer:", font=("Segoe UI", 9, "bold"), bg="#F8FAFC").pack(side="left", padx=5)
-    ent_search_reg = tk.Entry(fr_ctrl_reg, font=("Segoe UI", 10), width=25)
-    ent_search_reg.pack(side="left", padx=5)
-    
-    # 2. Pembinaan Jadual Treeview Utama
-    lajur_reg = ("Tanda", "ID", "Invoice Number", "Customer Name", "Registration Date", "Status Tracking")
-    tree_reg = ttk.Treeview(t_reg, columns=lajur_reg, show="headings", selectmode="browse")
-    tree_reg.pack(fill="both", expand=True, padx=10, pady=5)
-    
-    for col in lajur_reg:
-        tree_reg.heading(col, text=col, anchor="center")
-        tree_reg.column(col, width=150, anchor="center")
-    tree_reg.column("Tanda", width=60, anchor="center")
-    tree_reg.column("ID", width=60, anchor="center") # Untuk rujukan ID Database tersembunyi/kecil
-    tree_reg.column("Customer Name", width=250, anchor="w")
-    
-    # Senarai widget combobox aktif untuk mengelakkan isu memori bertumpuk semasa refresh
-    combobox_widgets = []
-def muat_data_invoice_registered_global(win, tree_reg, ent_search_reg, combobox_widgets):
-    """Mengisi jadual data invois berdaftar dengan suntikan gaya warna flat moden tanpa ralat lekukan."""
-    for cb in combobox_widgets:
-        try: cb.destroy()
-        except: pass
-    combobox_widgets.clear()
-    
-    for item in tree_reg.get_children():
-        tree_reg.delete(item)
-        
-    keyword = ent_search_reg.get().strip()
-    rekod = ambil_semua_master_invoice(keyword)
-    
-    style = ttk.Style()
-    style.theme_use('clam')
-    
-    for r in rekod:
-        db_id, inv_no, so_no, cust, tkh, status_semasa = r
-        item_id = tree_reg.insert("", "end", values=("☐", db_id, inv_no, so_no, cust, tkh, status_semasa))
-        
-        win.update_idletasks()
-        bbox = tree_reg.bbox(item_id, "Status Tracking")
-        if bbox:
-            x, y, w, h = bbox
-            
-            style_name = f"Combo_{db_id}.TCombobox"
-            cb = ttk.Combobox(tree_reg, values=["Pending", "Complete"], state="readonly", width=12, style=style_name)
-            cb.set(status_semasa)
-            cb.place(x=x, y=y, width=w, height=h)
-            
-            def kemaskini_warna_dropdown(c_box, status, s_name):
-                if status == "Complete":
-                    style.configure(s_name, fieldbackground="#22C55E", background="#16A34A", foreground="white", arrowcolor="white", borderwidth=0, relief="flat")
-                else:
-                    style.configure(s_name, fieldbackground="#EAB308", background="#CA8A04", foreground="black", arrowcolor="black", borderwidth=0, relief="flat")
-
-            kemaskini_warna_dropdown(cb, status_semasa, style_name)
-            
-            def membuat_event_tukar(i_id=db_id, c_box=cb, s_name=style_name, current_item=item_id):
-                def event_dalaman(event):
-                    status_baru = c_box.get()
-                    if kemaskini_status_master_invoice(i_id, status_baru):
-                        kemaskini_warna_dropdown(c_box, status_baru, s_name)
-                        tree_reg.set(current_item, "Status Tracking", status_baru)
-                return event_dalaman
-                    
-            cb.bind("<<ComboboxSelected>>", membuat_event_tukar())
-            combobox_widgets.append(cb)
-
-def klik_sel_tanda_invoice_global(event, tree_reg):
-    """Mengendalikan fungsi tanda kotak semak secara global."""
-    item_click = tree_reg.identify_row(event.y)
-    col_click = tree_reg.identify_column(event.x)
-    if item_click and col_click == "#1":
-        nilai_baris = list(tree_reg.item(item_click)['values'])
-        if nilai_baris and len(nilai_baris) > 0:
-            tanda_asal = str(nilai_baris[0]).strip()
-            tanda_baru = "☑" if tanda_asal == "☐" else "☐"
-            tree_reg.set(item_click, "Select", tanda_baru)
-
-
-    # Sambungkan Butang-butang Kawalan Tab Baharu
-    tk.Button(fr_ctrl_reg, text="🔍 SEARCH", command=muat_data_invoice_registered, bg="#1E3A8A", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
-    tk.Button(fr_ctrl_reg, text="🔄 REFRESH", command=lambda: [ent_search_reg.delete(0, tk.END), muat_data_invoice_registered()], bg="#0D9488", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
-    tk.Button(fr_ctrl_reg, text="🗑️ DELETE SELECTED", command=lambda: [padam_master_invoice_terpihal(tree_reg), muat_data_invoice_registered()], bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, cursor="hand2").pack(side=tk.LEFT, padx=3)
-    
-    # Butang kembali ke menu utama diletakkan rapat ke bahagian kanan tab
-    tk.Button(fr_ctrl_reg, text="◀ BACK ", command=win.destroy, bg="#6C757D", fg="white", font=("Segoe UI", 9, "bold"), width=15, relief="flat", cursor="hand2").pack(side=tk.RIGHT, padx=5)
-    
-    # Muat data secara automatik apabila tab pertama kali dibuka
-    muat_data_invoice_registered()
-
-#part 4
-def buka_tetingkap_database(root):
-    """
-    Tetingkap pengurusan database utama.
-    Menjamin kesemua 6 tab (Inner, Outer, Shipped, Registered, Edit Logs, History)
-    muncul serentak tanpa ada yang tercicir.
-    """
-    win = tk.Toplevel(root); win.title("SYSTEM DATABASE MANAGEMENT PANEL"); win.geometry("1300x680+50+20"); win.transient(root)
-    tutup = lambda: [win.grab_release(), tk.Toplevel.destroy(win)]
-    win.protocol("WM_DELETE_WINDOW", tutup)
-    win.destroy = tutup
-
-    fr = tk.Frame(win); fr.pack(fill="x", padx=10, pady=5)
-    tk.Button(fr, text="💥 FACTORY RESET", command=lambda: kosongkan_seluruh_database_sekarang(win, root), bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold")).pack(side=tk.RIGHT)
-    
-    nb = ttk.Notebook(win); nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-    
-    # ─── TAB 1: INNER CODES ───
-    t1 = tk.Frame(nb); nb.add(t1, text=" INNER CODES ")
-    f_tp1 = tk.Frame(t1); f_tp1.pack(fill="x", padx=15, pady=5); f_tb1 = tk.Frame(t1); f_tb1.pack(fill=tk.BOTH, expand=True)
-    central_tab_inner.bina_tab_inner(f_tb1, f_tp1, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
-
-    # ─── TAB 2: OUTER BOXES ───
-    t2 = tk.Frame(nb); nb.add(t2, text=" OUTER BOXES ")
-    f_tp2 = tk.Frame(t2); f_tp2.pack(fill="x", padx=15, pady=5); f_tb2 = tk.Frame(t2); f_tb2.pack(fill=tk.BOTH, expand=True)
-    central_tab_outer.bina_tab_outer(f_tb2, f_tp2, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
-
-    # ─── TAB 3: INVOICES SHIPPED ───
-    t3 = tk.Frame(nb); nb.add(t3, text=" INVOICES SHIPPED ")
-    f_tp3 = tk.Frame(t3); f_tp3.pack(fill="x", padx=15, pady=5); f_tb3 = tk.Frame(t3); f_tb3.pack(fill=tk.BOTH, expand=True)
-    central_tab_invoice.bina_tab_invoice(f_tb3, f_tp3, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
-
-    # ─── TAB 4: INVOICES REGISTERED ───
+    # ─── BINAAN TAB INVOICES REGISTERED ───
     t_reg = tk.Frame(nb)
     nb.add(t_reg, text=" 📑 INVOICES REGISTERED ")
     
@@ -732,10 +602,19 @@ def buka_tetingkap_database(root):
         keyword = ent_search_reg.get().strip()
         rekod = ambil_semua_master_invoice(keyword)
         
-        # 🎨 SUNTIKAN ENJIN MODEN ELEMEN COMBOCBOX FLAT
+        # 🎨 KONFIGURASI ENJIN GAYA (TTK STYLE FLAT MODERN)
         style = ttk.Style()
         style.theme_use('clam')
         
+        # Tetapkan gaya universal untuk senarai kotak pilihan apabila dropdown diklik jatuh ke bawah
+        win.option_add("*TCombobox*Listbox.background", "white")
+        win.option_add("*TCombobox*Listbox.foreground", "#333333")
+        win.option_add("*TCombobox*Listbox.selectBackground", "#0D9488") 
+        win.option_add("*TCombobox*Listbox.selectForeground", "white")
+        win.option_add("*TCombobox*Listbox.font", ("Segoe UI", 9))
+        win.option_add("*TCombobox*Listbox.relief", "flat")
+        win.option_add("*TCombobox*Listbox.borderWidth", 0)
+
         for r in rekod:
             db_id, inv_no, so_no, cust, tkh, status_semasa = r
             item_id = tree_reg.insert("", "end", values=("☐", db_id, inv_no, so_no, cust, tkh, status_semasa))
@@ -745,46 +624,60 @@ def buka_tetingkap_database(root):
             if bbox:
                 x, y, w, h = bbox
                 
-                # Cipta elemen gaya flat unik bagi setiap baris rekod
+                # Cipta nama gaya flat unik bagi setiap baris rekod
                 style_name = f"Combo_{db_id}.TCombobox"
+                
+                # Ubah suai padding sedikit supaya kotak dropdown selaras kemas di tengah-tengah sel jadual
                 cb = ttk.Combobox(tree_reg, values=["Pending", "Complete"], state="readonly", width=12, style=style_name)
                 cb.set(status_semasa)
-                cb.place(x=x, y=y, width=w, height=h)
+                cb.place(x=x+2, y=y+2, width=w-4, height=h-4)
                 
-                # Fungsi menukar warna penuh flat yang sangat kemas
+                # 🎨 FUNGSI WARNA DROPDOWN FLAT PREMIUM (PASTEL BERSIH)
                 def kemaskini_warna_dropdown(c_box, status, s_name):
                     if status == "Complete":
-                        # Warna Hijau Flat (Teks Putih)
                         style.configure(s_name, 
-                                        fieldbackground="#22C55E", 
-                                        background="#16A34A", 
-                                        foreground="white", 
-                                        arrowcolor="white",
+                                        fieldbackground="#DCFCE7", # Latar belakang hijau lembut
+                                        background="#DCFCE7",      # Latar belakang anak panah ikut bertukar warna
+                                        foreground="#15803D",      # Teks hijau gelap
+                                        arrowcolor="#15803D",      
+                                        font=("Segoe UI", 9, "bold"),
                                         borderwidth=0,
+                                        lightcolor="#DCFCE7",      
+                                        darkcolor="#DCFCE7",
                                         relief="flat")
+                        style.map(s_name, 
+                                  fieldbackground=[('readonly', '#DCFCE7'), ('focus', '#DCFCE7')],
+                                  background=[('readonly', '#DCFCE7'), ('focus', '#DCFCE7')],
+                                  foreground=[('readonly', '#15803D')])
                     else:
-                        # Warna Kuning Cerah Flat (Teks Hitam)
                         style.configure(s_name, 
-                                        fieldbackground="#EAB308", 
-                                        background="#CA8A04", 
-                                        foreground="black", 
-                                        arrowcolor="black",
+                                        fieldbackground="#FEF9C3", # Latar belakang kuning/jingga lembut
+                                        background="#FEF9C3",      # Anak panah kuning
+                                        foreground="#A16207",      # Teks coklat/jingga gelap
+                                        arrowcolor="#A16207",      
+                                        font=("Segoe UI", 9, "bold"),
                                         borderwidth=0,
+                                        lightcolor="#FEF9C3",
+                                        darkcolor="#FEF9C3",
                                         relief="flat")
+                        style.map(s_name, 
+                                  fieldbackground=[('readonly', '#FEF9C3'), ('focus', '#FEF9C3')],
+                                  background=[('readonly', '#FEF9C3'), ('focus', '#FEF9C3')],
+                                  foreground=[('readonly', '#A16207')])
 
-                # Cetus warna flat untuk pusingan pertama
+                # Cetus penukaran warna pada kitaran pertama muat data
                 kemaskini_warna_dropdown(cb, status_semasa, style_name)
                 
-                # Fungsi penukaran interaktif apabila di-klik
+                # Fungsi penukaran interaktif secara langsung semasa sistem beroperasi
                 def membuat_event_tukar(i_id=db_id, c_box=cb, s_name=style_name, current_item=item_id):
                     def event_dalaman(event):
                         status_baru = c_box.get()
                         if kemaskini_status_master_invoice(i_id, status_baru):
                             kemaskini_warna_dropdown(c_box, status_baru, s_name)
                             tree_reg.set(current_item, "Status Tracking", status_baru)
+                            tree_reg.focus_set()
                     return event_dalaman
                 
-                # Ikatkan event pilihan pertukaran combobox
                 cb.bind("<<ComboboxSelected>>", membuat_event_tukar())
                 combobox_widgets.append(cb)
 
@@ -800,8 +693,7 @@ def buka_tetingkap_database(root):
 
     tree_reg.bind("<Button-1>", klik_sel_tanda_invoice)
 
-    # ─── BUTTONS KAWALAN AKSI STANDARD KILANG OHTA (SAIZ & SUSUNAN LENGKAP SERAGAM) ───
-    # Membuang pady piksel teks dan menetapkan height=1 serta bd=0 untuk kesan flat seiras tab lama
+    # ─── BUTTONS KAWALAN AKSI STANDARD KILANG OHTA ───
     gaya_btn = {
         "font": ("Segoe UI", 9, "bold"), 
         "fg": "white", 
@@ -812,19 +704,198 @@ def buka_tetingkap_database(root):
         "cursor": "hand2"
     }
     
-    # Kelompok Kiri: Carian & Pemadaman (Susunan Seragam)
     tk.Button(fr_ctrl_reg, text="SEARCH", command=muat_data_invoice_registered, bg="#007BFF", **gaya_btn).pack(side=tk.LEFT, padx=3)
     tk.Button(fr_ctrl_reg, text="RESET", command=lambda: [ent_search_reg.delete(0, tk.END), muat_data_invoice_registered()], bg="#6C757D", **gaya_btn).pack(side=tk.LEFT, padx=3)
     tk.Button(fr_ctrl_reg, text="DELETE", command=lambda: [padam_master_invoice_terpilih(tree_reg), muat_data_invoice_registered()], bg="#DC3545", **gaya_btn).pack(side=tk.LEFT, padx=3)
     
-      # Kelompok Kanan: REFRESH dimasukkan dahulu supaya duduk di paling kanan sekali, diikuti BACK TO MAIN di kirinya
     tk.Button(fr_ctrl_reg, text="REFRESH", command=muat_data_invoice_registered, bg="#0D9488", **gaya_btn).pack(side=tk.RIGHT, padx=3)
     tk.Button(fr_ctrl_reg, text="BACK TO MAIN", command=win.destroy, bg="#6C757D", **gaya_btn).pack(side=tk.RIGHT, padx=3)
 
-
-
     ent_search_reg.bind("<Return>", lambda event: muat_data_invoice_registered())
     muat_data_invoice_registered()
+
+
+#part 4
+def buka_tetingkap_database(root):
+    """
+    Tetingkap pengurusan database utama.
+    Menjamin kesemua 6 tab (Inner, Outer, Shipped, Registered, Edit Logs, History)
+    muncul serentak tanpa ada yang tercicir.
+    """
+    win = tk.Toplevel(root); win.title("SYSTEM DATABASE MANAGEMENT PANEL"); win.geometry("1300x680+50+20"); win.transient(root)
+    tutup = lambda: [win.grab_release(), tk.Toplevel.destroy(win)]
+    win.protocol("WM_DELETE_WINDOW", tutup)
+    win.destroy = tutup
+
+    fr = tk.Frame(win); fr.pack(fill="x", padx=10, pady=5)
+    tk.Button(fr, text="💥 FACTORY RESET", command=lambda: kosongkan_seluruh_database_sekarang(win, root), bg="#DC3545", fg="white", font=("Segoe UI", 9, "bold")).pack(side=tk.RIGHT)
+    
+    nb = ttk.Notebook(win); nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    
+    # ─── TAB 1: INNER CODES ───
+    t1 = tk.Frame(nb); nb.add(t1, text=" INNER CODES ")
+    f_tp1 = tk.Frame(t1); f_tp1.pack(fill="x", padx=15, pady=5); f_tb1 = tk.Frame(t1); f_tb1.pack(fill=tk.BOTH, expand=True)
+    central_tab_inner.bina_tab_inner(f_tb1, f_tp1, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+    # ─── TAB 2: OUTER BOXES ───
+    t2 = tk.Frame(nb); nb.add(t2, text=" OUTER BOXES ")
+    f_tp2 = tk.Frame(t2); f_tp2.pack(fill="x", padx=15, pady=5); f_tb2 = tk.Frame(t2); f_tb2.pack(fill=tk.BOTH, expand=True)
+    central_tab_outer.bina_tab_outer(f_tb2, f_tp2, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+    # ─── TAB 3: INVOICES SHIPPED ───
+    t3 = tk.Frame(nb); nb.add(t3, text=" INVOICES SHIPPED ")
+    f_tp3 = tk.Frame(t3); f_tp3.pack(fill="x", padx=15, pady=5); f_tb3 = tk.Frame(t3); f_tb3.pack(fill=tk.BOTH, expand=True)
+    central_tab_invoice.bina_tab_invoice(f_tb3, f_tp3, win, gate_pratonton_seragam, lambda j, e, **k: padam_terpilih(j, e))
+
+       # ─── BINAAN TAB INVOICES REGISTERED (VERSI BEBAS RALAT & DIJAMIN KELUAR) ───
+    t_reg = tk.Frame(nb)
+    nb.add(t_reg, text=" 📑 INVOICES REGISTERED ")
+    
+    fr_ctrl_reg = tk.Frame(t_reg, bg="#F1F5F9", pady=6, padx=10)
+    fr_ctrl_reg.pack(fill="x")
+    
+    tk.Label(fr_ctrl_reg, text="Search Invoice/SO/Customer:", font=("Segoe UI", 9, "bold"), bg="#F1F5F9").pack(side="left", padx=5)
+    ent_search_reg = tk.Entry(fr_ctrl_reg, font=("Segoe UI", 10), width=25)
+    ent_search_reg.pack(side="left", padx=5)
+    
+    lajur_reg = ("Select", "ID", "Invoice Number", "SO Number", "Customer Name", "Registration Date", "Status Tracking")
+    tree_reg = ttk.Treeview(t_reg, columns=lajur_reg, show="headings", selectmode="browse")
+    tree_reg.pack(fill="both", expand=True, padx=10, pady=5)
+    
+    for col in lajur_reg:
+        tree_reg.heading(col, text=col, anchor="center")
+        tree_reg.column(col, width=130, anchor="center")
+    tree_reg.column("Select", width=60, anchor="center")
+    tree_reg.column("ID", width=50, anchor="center")
+    tree_reg.column("Customer Name", width=250, anchor="w")
+    tree_reg.column("Status Tracking", width=140, anchor="center")
+    
+    combobox_widgets = []
+
+    def muat_data_invoice_registered():
+        for cb in combobox_widgets:
+            try: cb.destroy()
+            except: pass
+        combobox_widgets.clear()
+        
+        for item in tree_reg.get_children():
+            tree_reg.delete(item)
+            
+        keyword = ent_search_reg.get().strip()
+        rekod = ambil_semua_master_invoice(keyword)
+        
+        # 🎨 KONFIGURASI ENJIN GAYA DROPDOWN FLAT
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        # Menggunakan tree_reg sebagai ganti tetingkap induk untuk mengelakkan ralat 'win/root' global
+        tree_reg.option_add("*TCombobox*Listbox.background", "white")
+        tree_reg.option_add("*TCombobox*Listbox.foreground", "#333333")
+        tree_reg.option_add("*TCombobox*Listbox.selectBackground", "#0D9488") 
+        tree_reg.option_add("*TCombobox*Listbox.selectForeground", "white")
+        tree_reg.option_add("*TCombobox*Listbox.font", ("Segoe UI", 9))
+        tree_reg.option_add("*TCombobox*Listbox.relief", "flat")
+        tree_reg.option_add("*TCombobox*Listbox.borderWidth", 0)
+
+        for r in rekod:
+            db_id, inv_no, so_no, cust, tkh, status_semasa = r
+            item_id = tree_reg.insert("", "end", values=("☐", db_id, inv_no, so_no, cust, tkh, status_semasa))
+            
+            # Gantikan win.update_idletasks() dengan kaedah widget yang lebih selamat
+            tree_reg.update_idletasks()
+            bbox = tree_reg.bbox(item_id, "Status Tracking")
+            if bbox:
+                x, y, w, h = bbox
+                style_name = f"Combo_{db_id}.TCombobox"
+                
+                cb = ttk.Combobox(tree_reg, values=["Pending", "Complete"], state="readonly", width=12, style=style_name)
+                cb.set(status_semasa)
+                cb.place(x=x+2, y=y+2, width=w-4, height=h-4)
+                
+                def kemaskini_warna_dropdown(c_box, status, s_name):
+                    if status == "Complete":
+                        style.configure(s_name, 
+                                        fieldbackground="#DCFCE7", 
+                                        background="#DCFCE7",      
+                                        foreground="#15803D",      
+                                        arrowcolor="#15803D",      
+                                        font=("Segoe UI", 9, "bold"),
+                                        borderwidth=0,
+                                        lightcolor="#DCFCE7",      
+                                        darkcolor="#DCFCE7",
+                                        relief="flat")
+                        style.map(s_name, 
+                                  fieldbackground=[('readonly', '#DCFCE7'), ('focus', '#DCFCE7')],
+                                  background=[('readonly', '#DCFCE7'), ('focus', '#DCFCE7')],
+                                  foreground=[('readonly', '#15803D')])
+                    else:
+                        style.configure(s_name, 
+                                        fieldbackground="#FEF9C3", 
+                                        background="#FEF9C3",      
+                                        foreground="#A16207",      
+                                        arrowcolor="#A16207",      
+                                        font=("Segoe UI", 9, "bold"),
+                                        borderwidth=0,
+                                        lightcolor="#FEF9C3",
+                                        darkcolor="#FEF9C3",
+                                        relief="flat")
+                        style.map(s_name, 
+                                  fieldbackground=[('readonly', '#FEF9C3'), ('focus', '#FEF9C3')],
+                                  background=[('readonly', '#FEF9C3'), ('focus', '#FEF9C3')],
+                                  foreground=[('readonly', '#A16207')])
+
+                kemaskini_warna_dropdown(cb, status_semasa, style_name)
+                
+                def membuat_event_tukar(i_id=db_id, c_box=cb, s_name=style_name, current_item=item_id):
+                    def event_dalaman(event):
+                        status_baru = c_box.get()
+                        if kemaskini_status_master_invoice(i_id, status_baru):
+                            kemaskini_warna_dropdown(c_box, status_baru, s_name)
+                            tree_reg.set(current_item, "Status Tracking", status_baru)
+                            tree_reg.focus_set()
+                    return event_dalaman
+                
+                cb.bind("<<ComboboxSelected>>", membuat_event_tukar())
+                combobox_widgets.append(cb)
+
+    def klik_sel_tanda_invoice(event):
+        item_click = tree_reg.identify_row(event.y)
+        col_click = tree_reg.identify_column(event.x)
+        if item_click and col_click == "#1":
+            nilai_baris = list(tree_reg.item(item_click)['values'])
+            if nilai_baris and len(nilai_baris) > 0:
+                tanda_asal = str(nilai_baris[0]).strip()
+                tanda_baru = "☑" if tanda_asal == "☐" else "☐"
+                tree_reg.set(item_click, "Select", tanda_baru)
+
+    tree_reg.bind("<Button-1>", klik_sel_tanda_invoice)
+
+    # ─── BUTTONS KAWALAN AKSI (DILETAKKAN DI LUAR UNTUK MENGELAKKAN SEBARANG LOCK-ERROR) ───
+    gaya_btn = {
+        "font": ("Segoe UI", 9, "bold"), 
+        "fg": "white", 
+        "relief": "flat", 
+        "bd": 0, 
+        "height": 1, 
+        "padx": 15, 
+        "cursor": "hand2"
+    }
+    
+    tk.Button(fr_ctrl_reg, text="SEARCH", command=muat_data_invoice_registered, bg="#007BFF", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="RESET", command=lambda: [ent_search_reg.delete(0, tk.END), muat_data_invoice_registered()], bg="#6C757D", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    tk.Button(fr_ctrl_reg, text="DELETE", command=lambda: [padam_master_invoice_terpilih(tree_reg), muat_data_invoice_registered()], bg="#DC3545", **gaya_btn).pack(side=tk.LEFT, padx=3)
+    
+    # Kelompok Kanan: REFRESH & BACK TO MAIN
+    tk.Button(fr_ctrl_reg, text="REFRESH", command=muat_data_invoice_registered, bg="#0D9488", **gaya_btn).pack(side=tk.RIGHT, padx=3)
+    
+    # Gunakan fungsi lambda t_reg.winfo_toplevel().destroy untuk menutup tetingkap panel dengan selamat
+    tk.Button(fr_ctrl_reg, text="BACK TO MAIN", command=lambda: t_reg.winfo_toplevel().destroy(), bg="#6C757D", **gaya_btn).pack(side=tk.RIGHT, padx=3)
+
+    ent_search_reg.bind("<Return>", lambda event: muat_data_invoice_registered())
+    
+    # Jalankan muat data pertama kali
+    muat_data_invoice_registered()
+
 
 
 
