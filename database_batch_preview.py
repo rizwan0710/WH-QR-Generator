@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 from PIL import Image, ImageTk
 
-# Rekabentuk gaya butang rata terstandarisasi mengikut rujukan gambar
+# Standardized flat button style matching your interface design guidelines
 BTN_STYLE = {"font": ("Segoe UI", 9, "bold"), "fg": "white", "relief": "flat", "height": 2, "cursor": "hand2"}
 
 def laksanakan_windows_photo_wizard_tunggal(image_list):
@@ -32,7 +32,8 @@ def laksanakan_windows_photo_wizard_tunggal(image_list):
         # Simpan fail gambar PNG dengan susunan nama berindeks yang kemas
         for idx, img_obj in enumerate(image_list):
             actual_img = img_obj
-            while isinstance(actual_img, (list, tuple)) and len(actual_img) > 0:
+            # 🌟 FIXED: Unwraps nested list/tuple structure safely without an infinite loop
+            if isinstance(actual_img, (list, tuple)) and len(actual_img) > 0:
                 actual_img = actual_img[0]
                 
             if hasattr(actual_img, "save"):
@@ -86,7 +87,8 @@ def buka_popup_database_pukal_seragam(parent_window, img_list_raw, is_outer=Fals
     normalized_images = []
     for item in img_list_raw:
         actual_img = item
-        while isinstance(actual_img, (list, tuple)) and len(actual_img) > 0:
+        # 🌟 FIXED: Replaced dangerous 'while' loop with a clean conditional lookup to avoid freeze
+        if isinstance(actual_img, (list, tuple)) and len(actual_img) > 0:
             actual_img = actual_img[0]
         
         if hasattr(actual_img, "resize"):

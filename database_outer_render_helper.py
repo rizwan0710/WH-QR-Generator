@@ -6,16 +6,31 @@ import os
 import sys
 import sqlite3
 from PIL import Image, ImageTk
+from datetime import datetime
+
+# 🌟 IMPORT PENGURUS DATABASE PUSAT NAS 🌟
+import database_manager as dbm
 
 def dapatkan_qty_inner_direct(inner_seq):
+    """Mengambil kuantiti stiker murni dari database pusat NAS sekiranya semakan struktur lari."""
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIBAIKI: Menggunakan sambungan berpusat dbm.get_db_connection()
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT quantity FROM rekod_qr WHERE sequence_no = ?", (inner_seq,))
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError: pass
+                
+            cursor.execute(f"SELECT quantity FROM rekod_qr WHERE UPPER(TRIM({lajur_seq})) = ?", (str(inner_seq).strip().upper(),))
             row = cursor.fetchone()
-            if row: return str(row[0])
-    except Exception: pass
-    return "0"
+            if row and row:
+                return str(row).strip()
+    except Exception as e: 
+        print(f"Error direct quantity fetch: {e}")
+    return "100 PCS" # Fallback standard industri lantai kilang anda
 
 def cetak_qr_outer_single(img_label):
     try:
@@ -33,7 +48,7 @@ def simpan_qr_manual_outer_single(img_label, seq_outer):
         initialfile=f"REPRINT_OUTER_{fail_bersih}.png",
         defaultextension=".png",
         filetypes=[("PNG Files", "*.png")],
-        title="Simpan Label Outer Box"
+        title="Save Outer Box Label"
     )
     if path_simpan:
         try:
@@ -43,16 +58,22 @@ def simpan_qr_manual_outer_single(img_label, seq_outer):
             messagebox.showerror("ERROR", f"FAILED TO SAVE LABEL:\n{str(e)}")
 
 def proses_render_outer_single(baris, root, BTN_STYLE):
-    """🌟 ENJIN UTAMA: Memecah siri imbasan dan menterjemah teks kepada Part No secara RAM-based 🌟"""
+    """🌟 ENJIN UTAMA REPRINT: Mengambil nilai live murni dari database dan UI pusat NAS 🌟"""
     try:
         import label_outer_designer as lod
         import form_outer_packing_logic as fopl
         
-        data_flat = baris if isinstance(baris, (list, tuple)) else baris
-        
-        seq_outer      = str(data_flat[8]).strip() 
-        raw_inner_text = str(data_flat[6]).strip() 
-        
+        data_flat = list(baris) if isinstance(baris, (list, tuple)) else baris
+        if data_flat and str(data_flat[0]) in ("☐", "☑"):
+            data_flat = data_flat[1:]
+            
+        # 🛠️ SEPADAN LAJUR JADUAL: Mengikut ketetapan 9 lajur central database utama
+        # [0:ID, 1:Date, 2:Customer, 3:Quantity, 4:Box Type, 5:Linked Inners, 6:Operation, 7:Outer Sequence]
+        qty_text_live  = str(data_flat[3]).replace('PCS','').strip()  # Lajur Box Quantity (Contoh: 395)
+        raw_inner_text = str(data_flat[5]).strip()                    # Lajur Linked Inners
+        seq_outer      = str(data_flat[7]).strip()                    # Lajur Outer Sequence (B%)
+        cust_name      = str(data_flat[2]).strip()                    # Lajur Customer Name
+
         qr = qrcode.QRCode(version=1, box_size=10, border=1)
         qr.add_data(seq_outer)
         img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
@@ -63,16 +84,22 @@ def proses_render_outer_single(baris, root, BTN_STYLE):
         for s_clean in senarai_inner_bersih:
             if s_clean:
                 info_inner = fopl.dapatkan_maklumat_inner(s_clean)
-                if info_inner and len(info_inner) >= 4:
-                    part_no_asli = str(info_inner[3]).strip() # Mengambil lajur part_no asli
-                    q_val = str(info_inner[4]).strip()        # Mengambil lajur kuantiti asli
+                
+                # ✅ DIBAIKI: Mengeluarkan data secara selamat daripada format Kamus (Dict)
+                if isinstance(info_inner, dict) and "qty" in info_inner:
+                    q_val = info_inner.get("qty", "100 PCS")
                 else:
-                    part_no_asli = s_clean
+                    # Ambil baki murni database jika struktur Dictionary terlepas larian
                     q_val = dapatkan_qty_inner_direct(s_clean)
                 
-                data_gabungan_final.append((part_no_asli, str(q_val)))
+                # Masukkan nombor siri stiker WP bersama nilai kuantitinya yang bersih
+                data_gabungan_final.append((s_clean, f"{str(q_val).upper().replace('PCS','').strip()} PCS"))
 
-        img_gabung = lod.bina_imej_gabungan_akses(img_qr_mentah, data_gabungan_final, seq_outer)
+        # Menjana reka bentuk imej menggunakan enjin lakaran grafik designer rasmi anda
+        img_gabung = lod.create_outer_label_image(
+            seq_outer, "OHTA PRECISION", cust_name, "COMBINED", "CONSOLIDATED", 
+            f"{qty_text_live} PCS", "M/C-01", datetime.now().strftime("%d/%m/%Y"), img_qr_mentah, data_gabungan_final
+        )
 
         tingkap_preview = tk.Toplevel(root)
         tingkap_preview.title(f"REPRINT OUTER - {seq_outer}")
@@ -98,5 +125,6 @@ def proses_render_outer_single(baris, root, BTN_STYLE):
         tk.Button(frame_btn, text="🖨️ PRINT", command=lambda: cetak_qr_outer_single(img_gabung), bg="#22C55E", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
         tk.Button(frame_btn, text="💾 SAVE", command=lambda: simpan_qr_manual_outer_single(img_gabung, seq_outer), bg="#F59E0B", **BTN_STYLE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         tk.Button(frame_btn, text="❌ CLOSE", command=tingkap_preview.destroy, bg="#374151", **BTN_STYLE).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(4, 0))
+        
     except Exception as e:
-        messagebox.showerror("ERROR OUTER MAPPING", f"FAILED TO PROCESS DATA:\n{str(e)}")
+        messagebox.showerror("ERROR OUTER MAPPING", f"FAILED TO PROCESS REPRINT DATA:\n{str(e)}", parent=root)

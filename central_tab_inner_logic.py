@@ -8,10 +8,12 @@ from tkinter import messagebox, filedialog, ttk
 from PIL import Image, ImageTk
 import label_designer as ld
 import invoice_print_manager  # Triggers the newly added 1-bit crisp binary printer engine
-
-
-
+# Di bahagian atas fail logik tab:
+import database_manager as dbm
+# 🌟 WAJIB: Pastikan baris ini ada di bahagian atas luar fungsi (Global Scope)
+from datetime import datetime
 baris_hover_terakhir = None
+
 
 def carian_inner(jadual, entry_search):
     """Extracts dynamic inner box tracking information filtered via standard SQL fields."""
@@ -26,10 +28,15 @@ def carian_inner(jadual, entry_search):
     kata_kunci_senarai = [k.strip() for k in teks_carian.split() if k.strip()]
         
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # 🌟 KEMASKINI PENYELESAIAN MUTLAK: Tukar kepada get_db_connection() dari NAS
+        import database_manager
+        conn = database_manager.get_db_connection()
+        
+        # Menggunakan konteks 'with' dengan sambungan pusat kita
+        with conn:
             cursor = conn.cursor()
             
-            # 🌟 SEMAKAN LAJUR DINAMIK: Mengesan sama ada db menggunakan 'tarikh' atau 'date_created'
+            # 🌟 SEMAKAN LAJUR DINAMIK: Mengesan sama ada db menggunakan 'tarikh' or 'date_created'
             cursor.execute("PRAGMA table_info(rekod_qr)")
             info_lajur = [info[1] for info in cursor.fetchall()]
             nama_lajur_tarikh = "tarikh" if "tarikh" in info_lajur else "date_created"
@@ -66,6 +73,7 @@ def carian_inner(jadual, entry_search):
                 jadual.insert("", tk.END, values=(
                     "☐", r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]
                 ), tags=('normal',))
+                
     except sqlite3.Error as e:
         messagebox.showerror("DATABASE ERROR", f"FAILED TO UPLOAD INNER DATA:\n{str(e)}")
 
@@ -84,26 +92,24 @@ def on_inner_click(event, jadual):
             semua_nilai[0] = tanda_baru
             jadual.item(item_id, values=semua_nilai, tags=(tag_baru,))
 
+
+
 def on_mouse_hover(event, jadual):
-    global baris_hover_terakhir
+    global baris_hover_terakhir  # 🌟 SUNTIKAN KUNCI: Beritahu Python ini adalah variable global!
     item_id = jadual.identify_row(event.y)
     if item_id != baris_hover_terakhir:
         if baris_hover_terakhir and jadual.exists(baris_hover_terakhir):
-            nilai_lama = jadual.item(baris_hover_terakhir)['values']
-            tag_asal = 'checked' if "☑" in str(nilai_lama[0]) else 'normal'
-            jadual.item(baris_hover_terakhir, tags=(tag_asal,))
-        if item_id:
-            nilai_sekarang = jadual.item(item_id)['values']
-            if "☐" in str(nilai_sekarang[0]):
-                jadual.item(item_id, tags=('hover',))
+            v = jadual.item(baris_hover_terakhir)['values']
+            jadual.item(baris_hover_terakhir, tags=('checked' if "☑" in str(v[0]) else 'normal',))
+        if item_id and "☐" in str(jadual.item(item_id)['values'][0]): 
+            jadual.item(item_id, tags=('hover',))
         baris_hover_terakhir = item_id
 
 def on_mouse_leave(event, jadual):
-    global baris_hover_terakhir
+    global baris_hover_terakhir  # 🌟 SUNTIKAN KUNCI: Beritahu Python ini adalah variable global!
     if baris_hover_terakhir and jadual.exists(baris_hover_terakhir):
-        nilai_lama = jadual.item(baris_hover_terakhir)['values']
-        tag_asal = 'checked' if "☑" in str(nilai_lama[0]) else 'normal'
-        jadual.item(baris_hover_terakhir, tags=(tag_asal,))
+        v = jadual.item(baris_hover_terakhir)['values']
+        jadual.item(baris_hover_terakhir, tags=('checked' if "☑" in str(v[0]) else 'normal',))
     baris_hover_terakhir = None
 
 def bina_menu_klik_kanan_global(event, jadual, root):
@@ -134,6 +140,7 @@ def bina_menu_paste_search_global(event, entry_widget, root):
     else:
         menu_paste.add_command(label="[ Clipboard Empty ]", state="disabled")
     menu_paste.post(event.x_root, event.y_root)
+    
 def jana_grafik_label_dari_row(r):
     """
     🌟 ENJIN EKSTRAKSI INDEKS TREEVIEW MUTLAK (TREEVIEW STRICT INDEX MAPPING) 🌟
@@ -213,25 +220,58 @@ def padam_rekod_inner_terpilih(jadual, entry_search):
             
         except sqlite3.Error as e:
             messagebox.showerror("DATABASE ERROR", f"GAGAL MEMADAM REKOD KILANG:\n{str(e)}")
-
 def eksport_inner_excel():
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIBAIKI: Mengambil laluan Drive Z pusat secara dinamik dari database_manager
+        db_aktif = getattr(dbm, 'DATABASE_PATH', r"Z:\IT\IT\QR_SYS_Backup(DB)\warehouse_data.db")
+        
+        if not os.path.exists(db_aktif):
+            messagebox.showerror("DATABASE ERROR", f"Central Database file not found at location:\n{db_aktif}")
+            return
+
+        # ✅ DIBAIKI: Menggunakan sambungan pusat ke Drive Z rangkaian
+        with sqlite3.connect(db_aktif, timeout=15) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no FROM rekod_qr WHERE sequence_no LIKE 'WP%' ORDER BY id DESC")
+            
+            # 🛠️ SEMAKAN LAJUR DINAMIK: Mengesan sama ada db menggunakan 'sequence_no' atau '[Sequence No]'
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError:
+                lajur_seq = "sequence_no"
+
+            # Ambil data inner packing (WP) dari database pusat
+            cursor.execute(f"""
+                SELECT id, tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, {lajur_seq} 
+                FROM rekod_qr WHERE {lajur_seq} LIKE 'WP%' ORDER BY id DESC
+            """)
             semua_data = cursor.fetchall()
+
         if not semua_data:
             messagebox.showwarning("WARNING", "NO DATA TO EXPORT!")
             return
-        path_excel = filedialog.asksaveasfilename(initialfile="Laporan_Form1_Inner_Packing.csv", defaultextension=".csv")
+
+        # Cadangkan penamaan fail CSV
+        tarikh_sekarang = datetime.now().strftime("%Y%m%d")
+        nama_fail_cadangan = f"Inner_report_{tarikh_sekarang}.csv"
+        
+        path_excel = filedialog.asksaveasfilename(
+            initialfile=nama_fail_cadangan, 
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        
         if path_excel:
             with open(path_excel, mode='w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(["ID", "Date", "Customer Name", "Drawing No", "Part Number", "Quantity", "Mnfd Date", "Machine", "Lotcard No", "Sequence Number"])
                 writer.writerows(semua_data)
             messagebox.showinfo("SUCCESS", "The Inner Packing report has been successfully saved!")
+            
     except Exception as e: 
-        messagebox.showerror("SYSTEM ERROR", str(e))
+        messagebox.showerror("SYSTEM ERROR", f"FAILED TO EXPORT INNER DATA:\n{str(e)}")
+
 
 def susun_lajur_treeview(jadual, lajur, menaik):
     pass

@@ -2,7 +2,7 @@
 import os 
 import sys
 import socket 
-import ctypes
+import ctypes 
 import platform 
 import tkinter as tk
 from tkinter import simpledialog, messagebox
@@ -37,7 +37,7 @@ root = tk.Tk()
 root.title(f"OHTA PRECISION - BARCODE & QR CODE GENERATOR [{COMPUTER_NAME}]")
 root.geometry("700x710+380+10")  
 root.configure(bg="#F1F5F9")
-root.resizable(False, False)
+root.resizable(False, False) 
 
 # Initialize local dynamic isolated database system arrays on startup
 dbm.siapkan_database()
@@ -115,7 +115,7 @@ tk.Button(frame_control, text="📄 FORM 3: INVOICE LABEL",
           command=lambda: [fip.buka_borang_invoice(root), root.after(600, mdb.kemaskini_angka_dashboard_live)], 
           bg="#8B5CF6", **btn_form_style).pack(fill="x", pady=3)
 
-def sahkan_dan_buka_form_4():
+def sahkan_dan_buka_form_4(): 
     PASSWORD_SEBENAR = "pcon123" 
     
     # Fungsi askstring di sini sudah betul kerana ada 2 parameter: "Production Control" dan "Password :"
@@ -125,7 +125,7 @@ def sahkan_dan_buka_form_4():
         show="*"
     )
     
-    if kata_laluan is not None:
+    if kata_laluan is not None: 
         if kata_laluan == PASSWORD_SEBENAR:
             fpb.buka_borang_pre_billing(root)
         else:

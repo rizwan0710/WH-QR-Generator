@@ -5,18 +5,24 @@ from tkinter import ttk
 import re
 import sqlite3
 from PIL import Image, ImageTk
+import database_manager  # Enjin pusat sambungan database NAS
+
+# Memastikan koneksi awal mengikut format tersentralisasi pusat NAS
+conn = database_manager.get_db_connection()
 
 def dapatkan_part_no_dari_db(inner_seq):
+    """Membaca data Part No yang tepat secara terus dari database server NAS pusat."""
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
-            cursor = conn.cursor()
+        # 🌟 DIKEMASKINI: Menggunakan sambungan pusat NAS dari database_manager
+        conn_nas = database_manager.get_db_connection()
+        with conn_nas:
+            cursor = conn_nas.cursor()
             cursor.execute("SELECT part_no FROM rekod_qr WHERE sequence_no = ?", (inner_seq,))
             row = cursor.fetchone()
             if row and row[0]:
                 return str(row[0]).strip()
     except Exception:
-        pass
-    return inner_seq  
+        pass  
 
 def cetak_qr_outer_wizard_lokal(img_label):
     try:
@@ -43,9 +49,9 @@ def simpan_qr_manual_wizard_lokal(img_label, seq_outer):
             messagebox.showinfo("Success", f"Label Outer Box [{fail_clean}] Successfully Saved!")
         except Exception as e:
             messagebox.showerror("STORAGE ERROR", str(e))
-
+            
 def buka_popup_pukal_outer_1by1(item_ditanda, root):
-    """🌟 BATCH OUTER WIZARD ENGINE (LANDSCAPE - DYNAMIC STANDARDIZED) 🌟"""
+    """🌟 BATCH OUTER WIZARD ENGINE (LANDSCAPE - 100% NAS COMPATIBLE) 🌟"""
     tingkap_popup = tk.Toplevel(root)
     tingkap_popup.title("OUTER BOX BATCH PANEL")
     tingkap_popup.geometry("540x510+420+120") 
@@ -58,12 +64,40 @@ def buka_popup_pukal_outer_1by1(item_ditanda, root):
     senarai_kad_pembungkus = []
     
     for r in item_ditanda:
+        # PENGESAHAN DATA: Pastikan baris data ditukar ke bentuk list/tuple yang bersih
+        if isinstance(r, (list, tuple)):
+            data_baris = list(r)
+        else:
+            try:
+                # Mengendalikan jika r adalah objek item dari Treeview secara mentah
+                data_baris = list(r)
+            except Exception:
+                continue
+
+        # Jika ada tanda tickbox di lajur pertama, buang tanda untuk penjajaran indeks
+        if data_baris and str(data_baris[0]) in ("☐", "☑"):
+            data_baris = data_baris[1:]
+
         try:
-            seq_outer = str(r[8]).strip()
-            raw_inner_text = str(r[6]).strip()
+            # 🛠️ PENJAJARAN DINAMIK KALIS ERROR MENGKUT PANJANG ELEMEN
+            # Struktur Asal Jadual GUI: [ID, Date, Customer, Qty, Type, Linked Inners, Outer Sequence]
+            if len(data_baris) >= 7:
+                seq_outer = str(data_baris[6]).strip()
+                raw_inner_text = str(data_baris[5]).strip()
+            elif len(data_baris) >= 6:
+                seq_outer = str(data_baris[5]).strip()
+                raw_inner_text = str(data_baris[4]).strip()
+            else:
+                # Failsafe sekiranya susunan indeks teranjak ke kedudukan asal [6] & [7] atau [7] & [8]
+                seq_outer = str(data_baris[-1]).strip()
+                raw_inner_text = str(data_baris[-2]).strip()
         except IndexError:
             continue
         
+        # Saringan keselamatan jika fail sequence kosong
+        if not seq_outer or seq_outer == "" or seq_outer == "None":
+            continue
+
         senarai_inner_bersih = [s.strip() for s in re.split(r'[,\n]', raw_inner_text) if s.strip() and s.strip() != "None"]
         
         data_gabungan_final = []
@@ -72,8 +106,10 @@ def buka_popup_pukal_outer_1by1(item_ditanda, root):
                 part_no_asli = dapatkan_part_no_dari_db(s_clean)
                 q_val = "0"
                 try:
-                    with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
-                        cursor = conn.cursor()
+                    # 🌟 LIVE QUANTITY: Menarik kuantiti live terbaharu dari server NAS pusat
+                    conn_nas = database_manager.get_db_connection()
+                    with conn_nas:
+                        cursor = conn_nas.cursor()
                         cursor.execute("SELECT quantity FROM rekod_qr WHERE sequence_no = ?", (s_clean,))
                         row_q = cursor.fetchone()
                         if row_q and row_q[0]:
@@ -83,13 +119,16 @@ def buka_popup_pukal_outer_1by1(item_ditanda, root):
                 
                 data_gabungan_final.append((part_no_asli, str(q_val)))
                 
-        qr = qrcode.QRCode(version=1, box_size=10, border=1)
-        qr.add_data(seq_outer)
-        qr.make(fit=True)
-        img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-        
-        img_kad = lod.bina_imej_gabungan_akses(img_qr_mentah, data_gabungan_final, seq_outer)
-        senarai_kad_pembungkus.append((img_kad, seq_outer))
+        try:
+            qr = qrcode.QRCode(version=1, box_size=10, border=1)
+            qr.add_data(seq_outer)
+            qr.make(fit=True)
+            img_qr_mentah = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+            
+            img_kad = lod.bina_imej_gabungan_akses(img_qr_mentah, data_gabungan_final, seq_outer)
+            senarai_kad_pembungkus.append((img_kad, seq_outer))
+        except Exception:
+            continue
 
     indeks_halaman = 0
     total_label = len(senarai_kad_pembungkus)
@@ -103,6 +142,25 @@ def buka_popup_pukal_outer_1by1(item_ditanda, root):
     label_gambar = tk.Label(frame_canvas_bg, bg="white")
     label_gambar.pack(padx=15, pady=15, expand=True, fill=tk.BOTH)
 
+    # ─── PENGIKATAN GRAFIK KALIS GARBAGE COLLECTION ───
+    if senarai_kad_pembungkus:
+        img_obj, current_seq = senarai_kad_pembungkus[indeks_halaman]
+        lbl_header.configure(text=f"OUTER PREVIEW ({current_seq}) | BATCH COUNTER: {indeks_halaman + 1}/{total_label}")
+        
+        w_box, h_box = 440, 280
+        img_w, img_h = img_obj.size
+        ratio = min(w_box / img_w, h_box / img_h)
+        img_resized = img_obj.resize((int(img_w * ratio), int(img_h * ratio)), Image.Resampling.LANCZOS)
+        
+        tk_img_render = ImageTk.PhotoImage(img_resized)
+        
+        label_gambar.configure(image=tk_img_render)
+        label_gambar.image = tk_img_render  # Mencegah imej hilang dari memori
+    else:
+        lbl_header.configure(text="TIADA DATA / GAGAL MENJANA BATCH PREVIEW", fg="red")
+
+
+    
     def kemaskini_paparan_selak():
         if total_label == 0: return
         img_kad, seq_outer = senarai_kad_pembungkus[indeks_halaman]
@@ -156,7 +214,7 @@ def buka_popup_pukal_outer_1by1(item_ditanda, root):
     if total_label > 1:
         frame_nav.pack(pady=5)
 
-    # ─── 2. ACTION BAR MULTIPLE VIEW SERAGAM OHTA PRECISION (DINAMIK) ───
+    # ─── 2. ACTION BAR MULTIPLE VIEW SERAGAM OHTA PRECISION ───
     frame_btn = tk.Frame(tingkap_popup, bg="#F8F9FA")
     frame_btn.pack(pady=15, side=tk.BOTTOM, fill=tk.X, padx=20)
     

@@ -5,6 +5,12 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import central_tab_inner_logic as logic
 import inner_packing_logic as ipl
+# Di bahagian atas fail logik tab:
+import database_manager
+
+# Di dalam fungsi yang memerlukan data database:
+# JANGAN GUNAKAN: conn = sqlite3.connect("warehouse_data.db")
+conn = database_manager.get_db_connection() # <-- Ganti kepada ini!
 
 def buka_popup_pukal_inner_1by1(item_ditanda, root):
     """🌟 BATCH PREVIEW ENGINE (INNER BOX - FIXED CLOSE BUTTON & ASPECT RATIO) 🌟"""

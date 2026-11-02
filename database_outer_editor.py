@@ -2,10 +2,13 @@ import sqlite3
 import re
 import tkinter as tk
 from tkinter import messagebox
-import database_audit_logger as logger  # 🌟 IMPORT ENJIN EDIT LOGS TUNGGAL 🌟
+
+# 🌟 IMPORT CENTRAL NAS DATABASE MANAGER ENGINE 🌟
+import database_manager as dbm
+import database_audit_logger as logger  
 
 def buka_popup_edit_outer_terperinci(root, jadual, entry_search, record_id, target_item_id):
-    """🏢 ENJIN GRID TERPERINCI OUTER BOX (WITH TOTAL LIVE LOG CAPTURE FIX) 🏢"""
+    """🏢 CENTRAL NETWORK DETAILED OUTER BOX EDITOR ENGINE (WITH AUTOMATIC SYNC) 🏢"""
     win_edit = tk.Toplevel(root)
     win_edit.title(f"DETAILED PART EDITOR (ID: {record_id})")
     win_edit.geometry("450x420")
@@ -17,18 +20,30 @@ def buka_popup_edit_outer_terperinci(root, jadual, entry_search, record_id, targ
     frame_container = tk.Frame(win_edit, bg="#F8F9FA")
     frame_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
     
-    linked_inners_raw = str(jadual.set(target_item_id, "Linked Inner Sequences")).strip()
-    outer_sequence_code = str(jadual.set(target_item_id, "Outer Sequence No")).strip()
-    qty_outer_lama = str(jadual.set(target_item_id, "Quantity")).upper().replace("PCS", "").strip()
+    # 🛠️ FIXED: Matched exact system column name labels from the core interface module
+    linked_inners_raw = str(jadual.set(target_item_id, "Linked Inners")).strip()
+    outer_sequence_code = str(jadual.set(target_item_id, "Outer Sequence")).strip()
+    qty_outer_lama = str(jadual.set(target_item_id, "Box Quantity")).upper().replace("PCS", "").strip()
     
     senarai_wp_codes = [s.strip() for s in re.split(r'[,\n]', linked_inners_raw) if s.strip() and s.strip() != "None"]
     
     data_pecahan_parts = []
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ FIXED: Routed data extraction exclusively via dbm centralized connection
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
+            
+            # Dynamic Column validation fallback mechanism protecting network structures
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError:
+                lajur_seq = "sequence_no"
+                
             for wp_code in senarai_wp_codes:
-                cursor.execute("SELECT part_no, quantity, id FROM rekod_qr WHERE sequence_no = ?", (wp_code,))
+                cursor.execute(f"SELECT part_no, quantity, id FROM rekod_qr WHERE {lajur_seq} = ?", (wp_code,))
                 row_part = cursor.fetchone()
                 if row_part:
                     data_pecahan_parts.append({
@@ -38,7 +53,7 @@ def buka_popup_edit_outer_terperinci(root, jadual, entry_search, record_id, targ
                         "inner_id": row_part[2]
                     })
     except Exception as e:
-        print(f"Ralat bacaan pecahan parts: {str(e)}")
+        print(f"Network database breakdown while reading item fragments: {str(e)}")
 
     if not data_pecahan_parts:
         messagebox.showwarning("Peringatan", "Tiada data pecahan siri Inner (WP%) ditemui dalam pangkalan data untuk rekod ini!", parent=win_edit)
@@ -75,14 +90,17 @@ def buka_popup_edit_outer_terperinci(root, jadual, entry_search, record_id, targ
 
         try:
             qty_format_final = f"{total_sum_baru} PCS"
-            with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+            
+            # ✅ FIXED: Overwrote manual sqlite local connectors to interact straight with NAS centers
+            conn = dbm.get_db_connection()
+            with conn:
                 cursor = conn.cursor()
                 for qty_str, inner_id in senarai_update_data:
                     cursor.execute("UPDATE rekod_qr SET quantity = ? WHERE id = ?", (qty_str, inner_id))
                 cursor.execute("UPDATE rekod_qr SET quantity = ? WHERE id = ?", (qty_format_final, record_id))
                 conn.commit()
             
-            # 🌟 SUNTIKAN UTAMA LOG TAB OUTER: Kunci format ringkas mengikut spesifikasi kegemaran anda 🌟
+            # Audit transaction logger trace configuration
             huraian_log_outer = f"[{outer_sequence_code}] Qty: {qty_outer_lama} -> {total_sum_baru}"
             logger.record_edit_activity("OUTER", huraian_log_outer)
             
@@ -96,6 +114,6 @@ def buka_popup_edit_outer_terperinci(root, jadual, entry_search, record_id, targ
             root.after(150, lambda: ctol.carian_outer(jadual, entry_search))
             
         except Exception as e:
-            messagebox.showerror("ERROR", f"FAILED TO SAVE DETAILS:\n{str(e)}", parent=win_edit)
+            messagebox.showerror("ERROR", f"FAILED TO SAVE DETAILS TO NETWORK DIRECTORY:\n{str(e)}", parent=win_edit)
 
     tk.Button(win_edit, text="💾 SAVE CHANGES & AUTO-SUM", command=laksanakan_simpan_detailed_outer, bg="#007ACC", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2").pack(pady=15, fill=tk.X, padx=30)

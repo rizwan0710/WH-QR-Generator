@@ -3,6 +3,13 @@ from tkinter import ttk
 import database_edit_manager as dem  
 import central_tab_inner_logic as logic  
 
+# Di bahagian atas fail logik tab:
+import database_manager
+
+# Di dalam fungsi yang memerlukan data database:
+# JANGAN GUNAKAN: conn = sqlite3.connect("warehouse_data.db")
+conn = database_manager.get_db_connection() # <-- Ganti kepada ini!
+
 def bina_tab_inner(tab_inner_frame, frame_top1, root, pratonton_fn, padam_fn):
     tab_inner_frame.configure(bg="white")
     frame_top1.configure(bg="white")

@@ -1,7 +1,7 @@
 import sqlite3
 import qrcode
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk # Ditambah ttk jika belum diimport untuk pencarian widget jadual
 import label_invoice_designer as lid
 import invoice_preview_window as ipw
 
@@ -10,6 +10,18 @@ def proses_pratonton_invoice(item_ditanda, root):
     🌟 FIX MUTTAMAD TOTAL: LIVE DATA REFETCH ENGINE (COLUMN NAME TRACKER) 🌟
     Membaca data terus mengikut nama lajur visual Treeview untuk mengelakkan ralat heretan indeks array.
     """
+    
+    # 🛡️ 1. PENGADAL / VALIDATION GUARD MULTI-SELECTION
+    # Jika parameter item_ditanda adalah senarai dan mempunyai lebih daripada 1 baris dipilih
+    if isinstance(item_ditanda, list) and len(item_ditanda) > 1:
+        messagebox.showwarning(
+            "PILIHAN TERLAMPAU BANYAK", 
+            "Sistem dikesan menanda lebih daripada satu invois!\n\n"
+            "Sila tanda (✓) pada SATU baris invois sahaja untuk membuat pratonton grafik.", 
+            parent=root
+        )
+        return
+
     # Dapatkan rujukan jadual Treeview Invoice secara langsung dari root parent
     # Kita cari widget Treeview yang sedang aktif untuk membaca data paling segar
     try:
@@ -24,6 +36,15 @@ def proses_pratonton_invoice(item_ditanda, root):
                             break
     except:
         jadual = None
+
+    # Tambahan semakan sekiranya operator tersilap klik highlight biru lebih dari satu baris secara visual
+    if jadual and len(jadual.selection()) > 1:
+        messagebox.showwarning(
+            "PILIHAN TERLAMPAU BANYAK", 
+            "Sila highlight atau klik pada SATU baris invois sahaja di dalam jadual untuk membuat pratonton.", 
+            parent=root
+        )
+        return
 
     # Mengambil item yang sedang di-highlight biru oleh operator (Paling Tepat & Segar)
     try:

@@ -4,6 +4,12 @@ from PIL import ImageTk, Image
 import form_invoice_packing_logic as ipl  
 import invoice_print_manager  
 import os
+# Di bahagian atas fail logik tab:
+import database_manager
+
+# Di dalam fungsi yang memerlukan data database:
+# JANGAN GUNAKAN: conn = sqlite3.connect("warehouse_data.db")
+conn = database_manager.get_db_connection() # <-- Ganti kepada ini!
 
 def buka_popup_individual_1by1(parent, senarai_kad_tunggal, inv_no=""):
     """

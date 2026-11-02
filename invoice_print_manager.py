@@ -6,6 +6,8 @@ import time
 import shutil
 from tkinter import messagebox, filedialog
 from PIL import Image
+import re
+import database_manager as dbm  # Memastikan pengurus database diimport
 
 def convert_to_crisp_monochrome(pil_img):
     """
@@ -121,16 +123,23 @@ def simpan_a4_master(img_label, invoice_no):
         messagebox.showerror("ERROR SAVED", f"FAILED TO SAVE IMAGE:\n{str(e)}")
 
 def dapatkan_qty_outer(seq_no):
-    if not seq_no or seq_no == "--- PILIH DATA ---":
+    if not seq_no or str(seq_no).strip() in ["", "--- PILIH DATA ---"]:
         return 0
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # 🌟 Menggunakan dbm.DATABASE_PATH yang kalis .exe mengikut standard kod anda
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT quantity FROM rekod_qr WHERE sequence_no = ?", (str(seq_no).strip(),))
             res = cursor.fetchone()
-            if res:
+            
+            if res and res[0] is not None:
+                # Membersihkan teks (contoh: "100 PCS" -> "100")
                 clean_val = str(res[0]).upper().replace("PCS", "").strip()
-                return int(float(clean_val))
+                
+                # Ekstrak nombor sahaja menggunakan Regex untuk keselamatan data lama
+                match = re.search(r"[-+]?\d*\.\d+|\d+", clean_val)
+                if match:
+                    return int(float(match.group()))
             return 0
-    except:
+    except Exception:
         return 0

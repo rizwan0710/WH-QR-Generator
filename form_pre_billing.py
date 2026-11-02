@@ -1,12 +1,20 @@
-# form_pre_billing.py - PART 1: IMPORTS & DATABASE LOGIC (100% KALIS EXE)
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox
 import sqlite3
-import os
-import sys
 from datetime import datetime
-import database_manager as dbm
-import custom_dropdown as cd
+import database_manager as dbm  # Menggunakan pengurus pangkalan data WH-QR anda
+import custom_dropdown as cd     # Menggunakan modul dropdown custom anda
+
+def ambil_senarai_customer_dari_master_db():
+    """Mengambil senarai unik nama customer yang telah diimport dalam pangkalan data untuk drop-down."""
+    try:
+        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT TRIM(customer_name) FROM master_produk WHERE customer_name IS NOT NULL AND customer_name != ''")
+            rekod = cursor.fetchall()
+            return sorted(list(set([r[0].upper() for r in rekod if r[0]])))
+    except Exception:
+        return []
 
 def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
     """Menyimpan data pendaftaran awal invois dan SO ke dalam jadual master_invoice kilang dengan status Pending."""
@@ -24,22 +32,46 @@ def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
         with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
             cursor = conn.cursor()
             
-            # 🌟 KEMASKINI UTAMA: Memasukkan lajur 'status' secara eksplikat bernilai 'Pending'
+            # 🌟 AUTO-MATCH: Dapatkan customer_code daripada database master_produk berdasarkan customer_name
             cursor.execute("""
-                INSERT INTO master_invoice (invoice_no, so_no, customer_name, tarikh_masuk, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (inv_no, so_no, cust_name, tarikh_sekarang, "Pending"))
+                SELECT customer_code 
+                FROM master_produk 
+                WHERE UPPER(TRIM(customer_name)) = ? 
+                LIMIT 1
+            """, (cust_name,))
+            row = cursor.fetchone()
+            
+            # Jika jumpa ambil kod tersebut. Jika tidak, bagi "N/A" supaya tidak terganjak kolum UI
+            cust_code = row[0] if row and row[0] else "N/A"
+            
+            # 🌟 KEMASKINI UTAMA: Memasukkan lajur 'customer_code' dan 'status' secara eksplisit
+            cursor.execute("""
+                INSERT INTO master_invoice (invoice_no, so_no, customer_name, customer_code, tarikh_masuk, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (inv_no, so_no, cust_name, cust_code, tarikh_sekarang, "Pending"))
             
             conn.commit()
             
         # Log pergerakan perubahan data ke dalam sistem audit logs utama secara automatik
         try:
             import database_audit_logger
-            database_audit_logger.record_edit_activity("PRE-BILLING FORM", f"ADDED PRE-REGISTRATION: INV: {inv_no} | SO: {so_no} | CUST: {cust_name}")
+            database_audit_logger.record_edit_activity(
+                "PRE-BILLING FORM", 
+                f"ADDED PRE-REGISTRATION: INV: {inv_no} | SO: {so_no} | CUST: {cust_name} | CODE: {cust_code}"
+            )
         except Exception:
             pass
 
-        messagebox.showinfo("SUCCESS", f"Pre-Billing Data successfully registered!\n\n🔹 Invoice No: {inv_no}\n🔹 SO No: {so_no}\n🔹 Customer: {cust_name}\n🔹 Status: Pending", parent=win)
+        messagebox.showinfo(
+            "SUCCESS", 
+            f"Pre-Billing Data successfully registered!\n\n"
+            f"🔹 Invoice No: {inv_no}\n"
+            f"🔹 SO No: {so_no}\n"
+            f"🔹 Customer: {cust_name}\n"
+            f"🔹 Customer Code: {cust_code}\n"
+            f"🔹 Status: Pending", 
+            parent=win
+        )
         
         # Kosongkan isian borang untuk persediaan data kemasukan seterusnya
         invoice_ent.delete(0, tk.END)
@@ -52,23 +84,11 @@ def simpan_data_pre_billing(win, invoice_ent, so_ent, customer_ent):
     except Exception as e:
         messagebox.showerror("DATABASE ERROR", f"Failed to record information context:\n{str(e)}", parent=win)
 
-def ambil_senarai_customer_dari_master_db():
-    """Mengambil senarai unik nama customer yang telah diimport dalam pangkalan data untuk drop-down."""
-    try:
-        with sqlite3.connect(dbm.DATABASE_PATH, timeout=10) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT DISTINCT TRIM(customer_name) FROM master_produk WHERE customer_name IS NOT NULL AND customer_name != ''")
-            rekod = cursor.fetchall()
-            return sorted(list(set([r[0].upper() for r in rekod if r[0]])))
-    except Exception:
-        return []
-    # form_pre_billing.py - PART 2: GUI INITIALIZATION & CONTROL PANEL LAYOUT
-# form_pre_billing.py - PART 2: GUI INITIALIZATION & SIDE-BY-SIDE BUTTONS LAYOUT
 def buka_borang_pre_billing(root):
     """Membuka tetingkap Form 4 dengan susunan butang sebaris secara kiri dan kanan standard kilang OHTA."""
     win_pre = tk.Toplevel(root)
     win_pre.title("FORM 4: PRE-BILLING DOCUMENT ENTRY")
-    win_pre.geometry("540x330+450+100") # Dikurangkan ketinggian canvas (-40) kerana butang sudah sebaris
+    win_pre.geometry("540x360+450+100") # Ketinggian optimum untuk muat 3 kolum data input
     win_pre.configure(bg="#F8F9FA")
     win_pre.resizable(False, False)
     win_pre.grab_set()
@@ -102,6 +122,7 @@ def buka_borang_pre_billing(root):
     frame_row3 = tk.Frame(frame_entry, bg="#F8F9FA")
     frame_row3.pack(fill=tk.X, pady=6)
     tk.Label(frame_row3, text="Customer Name :", **lbl_style).pack(side=tk.LEFT)
+    
     frame_cust_mix = tk.Frame(frame_row3, bg="#F8F9FA")
     frame_cust_mix.pack(side=tk.LEFT, fill=tk.X, expand=True)
     
@@ -114,15 +135,16 @@ def buka_borang_pre_billing(root):
 
     ent_customer.bind("<KeyRelease>", lambda e: cd.kendalikan_taipan_dropdown(ent_customer, win_pre, ambil_senarai_customer_dari_master_db()) if e.keysym not in ["Up", "Down", "Return", "Escape"] else None)
 
+    # Kawalan Navigasi Butang Enter Keyboard
     ent_invoice.bind("<Return>", lambda e: ent_so.focus_set())
     ent_so.bind("<Return>", lambda e: ent_customer.focus_set())
 
-    # ─── 🌟 ACTION BAR KAWALAN BUTTONS (SUSUNAN KIRI & KANAN SERAGAM) ───
+    # ─── ACTION BAR KAWALAN BUTTONS (SUSUNAN KIRI & KANAN SERAGAM) ───
     btn_frame = tk.Frame(win_pre, bg="#F8F9FA")
     btn_frame.pack(fill=tk.X, padx=30, pady=15)
     
     gaya_butang_seragam = {
-        "font": ("Segoe UI", 9, "bold"), # Dikecilkan sikit kepada saiz 9 supaya muat cantik sebaris
+        "font": ("Segoe UI", 9, "bold"), 
         "fg": "white",
         "bd": 0,
         "height": 2,          
@@ -139,5 +161,3 @@ def buka_borang_pre_billing(root):
     tk.Button(btn_frame, text="◀ BACK ", bg="#64748B",
               command=win_pre.destroy,
               **gaya_butang_seragam).pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(5, 0))
-
-

@@ -9,6 +9,10 @@ from datetime import datetime
 from tkinter import messagebox, filedialog
 import label_outer_designer as lod
 import win32print
+from PIL import Image
+
+# 🌟 IMPORT PENGURUS DATABASE PUSAT (Sama seperti fail-fail central database yang lain)
+import database_manager as dbm
 
 def cetak_qr(img_label):
     """🖨️ ENJIN VISUAL AUTO-SIZING OUTER (KUNCI 40x80mm + PAPAR POP-UP WINDOWS) 🖨️"""
@@ -43,40 +47,67 @@ def simpan_qr_manual(img_gabung, seq_outer):
         messagebox.showinfo("SUCCESS", "Outer Box Label Image Successfully saved!")
 
 def dapatkan_maklumat_inner(seq_no):
-    """Mengambil data Kuantiti dan Customer bagi siri WP% dari database dengan SEKATA KEPALA KOD WP."""
+    """Mengambil data Kuantiti dan Customer bagi siri WP% dari database terpusat."""
     kod_bersih = str(seq_no).strip().upper()
     
-    # 🌟 KUNCI SEKATAN UTAMA: Tolak jika kod bar yang diimbas bukan bermula dengan kepala 'WP' (Inner Label)
     if not kod_bersih.startswith("WP"):
-        return {"error": "❌ SEKATAN JENIS KOD BAR!\n\nBorang Outer Packing INI hanya boleh mengimbas stiker dari jenis INNER LABEL (WP%) sahaja!\n\nKod bar Outer (B%) dan Invoice (INV%) ditolak secara mutlak!"}
+        return {"error": "❌ SEKATAN JENIS KOD BAR!\n\nBorang Outer Packing INI hanya boleh mengimbas stiker dari jenis INNER LABEL (WP%) sahaja!\n\nKod bar Outer (B%) and Invoice (INV%) ditolak secara mutlak!"}
         
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIUBAH: Menggunakan database terpusat baharu
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT quantity, customer FROM rekod_qr WHERE sequence_no = ?", (kod_bersih,))
+            
+            # Memastikan semakan fleksibel terhadap kewujudan variasi nama lajur sequence
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError: pass
+            
+            cursor.execute(f"SELECT quantity, customer FROM rekod_qr WHERE {lajur_seq} = ?", (kod_bersih,))
             res = cursor.fetchone()
             if res:
                 return {"qty": str(res[0]).strip(), "customer": str(res[1]).strip().upper()}
             return None
-    except sqlite3.Error:
+    except Exception:
         return None
 
 def semak_adakah_inner_sudah_digunakan(seq_no):
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIUBAH: Menggunakan database terpusat baharu
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE 'B%' AND machine LIKE ?", (f"%{str(seq_no).strip().upper()}%",))
+            
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError: pass
+            
+            cursor.execute(f"SELECT {lajur_seq} FROM rekod_qr WHERE {lajur_seq} LIKE 'B%' AND machine LIKE ?", (f"%{str(seq_no).strip().upper()}%",))
             res = cursor.fetchone()
             return True if res else False
-    except sqlite3.Error:
+    except Exception:
         return False
 
 def jana_nombor_siri_outer(tarikh_pola):
     pola_carian = f"B{tarikh_pola}%"
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIUBAH: Menggunakan database terpusat baharu
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT sequence_no FROM rekod_qr WHERE sequence_no LIKE ? ORDER BY id DESC LIMIT 1", (pola_carian,))
+            
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError: pass
+            
+            cursor.execute(f"SELECT {lajur_seq} FROM rekod_qr WHERE {lajur_seq} LIKE ? ORDER BY id DESC LIMIT 1", (pola_carian,))
             max_seq = cursor.fetchone()
             if max_seq and max_seq[0]:
                 nombor_akhir = re.findall(r'\d+', str(max_seq[0]))
@@ -109,15 +140,25 @@ def simpan_dan_jana_grafik(senarai_wp_terpilih, customer_name):
             except ValueError: pass
         
     try:
-        with sqlite3.connect("warehouse_data.db", timeout=10) as conn:
+        # ✅ DIUBAH: Kemasukan rekod baharu disuntik terus ke lokasi pusat rangkaian NAS
+        conn = dbm.get_db_connection()
+        with conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, sequence_no)
+            
+            # Pengesahan nama lajur sequence untuk simpanan data yang selamat
+            lajur_seq = "sequence_no"
+            try:
+                cursor.execute("SELECT [Sequence No] FROM rekod_qr LIMIT 1")
+                lajur_seq = "[Sequence No]"
+            except sqlite3.OperationalError: pass
+            
+            cursor.execute(f"""
+                INSERT INTO rekod_qr (tarikh, customer, drawing_no, part_no, quantity, mfg_date, machine, lotcard_no, {lajur_seq})
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (tarikh_kini, customer_name, "COMBINED", "CONSOLIDATED", f"{total_qty_all} PCS", tarikh_kini, rujukan_inner_gabung, "OUTER BOX", seq_outer))
             conn.commit()
-    except sqlite3.Error as e:
-        raise Exception(f"FAILED TO SAVE AT DATABASE: {str(e)}")
+    except Exception as e:
+        raise Exception(f"FAILED TO SAVE AT CENTRAL DATABASE: {str(e)}")
         
     qr = qrcode.QRCode(version=1, box_size=10, border=1)
     qr.add_data(seq_outer)
